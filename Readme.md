@@ -4,7 +4,7 @@ This is a very simple, lightweight file that can be opened in any browser to man
 
 Features:
 - Setup and connect to your database in less than 5 minutes
-- Uses less than 1/10th of the RAM of opening a bubble editor window in your browser
+- Uses 10x less RAM than a bubble editor window in your browser
 - Data tables load with columns in the same order every time
 - Columns can be reordered and their position can be saved
 - No horizontal scroll glitches or bugs
