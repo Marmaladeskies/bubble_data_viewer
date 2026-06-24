@@ -1,50 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<!-- 
-USAGE:
-    - Define the BASE_URL, API TOKEN, and the name of your bubble.io data types in the 'CONFIGURATION' section.
-    - The bubble data types must be defined and have api and privacy permissions. 
-    - Columns are populated automatically from the data type's fields. 
-    ***Fields where every value is empty are not returned by the bubble API search and will not appear as columns in tables.***
-    - Open this file in any browser and it will automatically connect to your database using the bubble API.
-
-    OPTIONAL:
-    - LAYOUT_KEY_PREFIX and LAYOUT_KEY_PREFIX_TEST may be used if you want to change the default display order of columns for each data type:
-        - This requires a central settings data type (defined as APP_SETTINGS_TYPE below) in your Bubble database to store custom column order fields.
-        - Bubble does not serve data in the same order for live and test data and columns that contain no data are not returned by the API, but may appear in the other version.
-        - Separate live and test sort order fields must be created if you want to customize column order for both.
-        - Use LAYOUT_KEY_PREFIX and LAYOUT_KEY_PREFIX_TEST to define the prefix used for all of the APP_SETTINGS_TYPE sort order field names.
-        - Define a suffix for each data type or the data type's label (lowercased) is added as a suffix to form the name of each field in the APP_SETTINGS_TYPE. 
-        - This script assumes that all of your sort order fields in the APP_SETTINGS_TYPE are named 'LAYOUT_KEY_PREFIX suffix'
-        
-        Example:  
-        - You want to generate tables for the 'Events' and 'Personal Records' data types.
-        - You are storing sort order in the data type 'Special Data Constants' that has one row that is never deleted.
-        - You created fields 'column order [live] events', 'column order [test] events', 'column order [test] records', and 'column order [live] records' in 'Special Data Constants'
-
-        ~~~
-        const APP_SETTINGS_TYPE = 'specialdataconstants'; // data type that stores custom column orders (lowercase, remove spaces)
-        const LAYOUT_KEY_PREFIX = 'column order [live]';
-        const LAYOUT_KEY_PREFIX_TEST = 'column order [test]';
-
-        // Define your base table configurations
-        const baseDataTypes = [
-            {
-                value: 'events',
-                label: 'Events' // no suffix defined so lowercase label is used
-            },
-            {
-                value: 'personalrecords',
-                label: 'Personal Records',
-                suffix: 'records' // matches 'column order [live] records'
-            },
-            
-            ...
-        ~~~
     
--->
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
