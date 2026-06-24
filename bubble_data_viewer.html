@@ -275,15 +275,15 @@
         // column order constants
         let originalHeadersRaw = []; // Tracks original default index for the orderMap generator
         const APP_SETTINGS_TYPE = 'specialdataconstants'; // data type that stores custom column orders (lowercase, remove spaces)
-        const LAYOUT_KEY_PREFIX = 'column order [live]';
-        const LAYOUT_KEY_PREFIX_TEST = 'column order [test]';
+        const FIELD_NAME_PREFIX = 'column order [live]';
+        const FIELD_NAME_PREFIX_TEST = 'column order [test]';
 
         // Define your base table configurations
         const baseDataTypes = [
             {
                 value: 'events', // Lowercase, no spaces. This must exactly match the value Bubble uses for the API
-                label: 'Events', // lowercase version of this is used as the suffix if no other suffix is provided
-                //suffix: 'custom suffix' // must match the suffix part of the name of the column order field
+                label: 'Events', // lowercase version of this is used as the field_name_suffix if no other suffix is provided
+                //field_name_suffix: 'custom suffix' // must match the suffix part of the name of the column order field
             },
             {
                 value: 'specialdataconstants',
@@ -300,15 +300,15 @@
         ];
         // Automatically generate the full array with layout keys
         const DATA_TYPES = baseDataTypes.map(dt => {
-            // Use the provided suffix, OR default to lowercasing the label
-            const layoutSuffix = dt.suffix || dt.label.toLowerCase();
+            // Use the provided field_name_suffix, OR default to lowercasing the label
+            const final_suffix = dt.field_name_suffix || dt.label.toLowerCase();
 
             return {
                 value: dt.value,
                 label: dt.label,
                 // Dynamically build the layout keys
-                layoutKeyLive: `${LAYOUT_KEY_PREFIX} ${layoutSuffix}`,
-                layoutKeyTest: `${LAYOUT_KEY_PREFIX_TEST} ${layoutSuffix}`
+                layoutKeyLive: `${FIELD_NAME_PREFIX} ${final_suffix}`,
+                layoutKeyTest: `${FIELD_NAME_PREFIX_TEST} ${final_suffix}`
             };
         });
 
