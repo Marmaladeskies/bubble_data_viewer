@@ -4,13 +4,15 @@ This is a very simple, lightweight file that can be opened in any browser to man
 
 Features:
 - Setup and connect to your database in less than 5 minutes
-- Uses 10x less RAM than a bubble editor window in your browser
+- Uses at least 10x less RAM than a bubble editor window in your browser
 - Data tables load with columns in the same order every time
 - Columns can be reordered and their position can be saved
 - No horizontal scroll glitches or bugs
 - Better UX for editing data (and type safety is enforced) than anything that can be built in native bubble.
+- You have all the code, so adding or making changes to this with your favorite AI is much easier than using bubble
 
 Limitations:
+- Search uses bubble's exact keyword search which sucks, the filter has better substring searching but only searches the current page. (Could be improved to add caching or even a way to generate a local copy of larger databases to access better search tools)
 - Option sets are not available from the API and would need to be hardcoded, so editing option sets requires typing out option names exactly correct (or else saving changes will fail with an error message)
 - yes/no values display as true/false
 - Fields where every value in the database is empty are not returned by the bubble API search and will not appear as columns in tables.
