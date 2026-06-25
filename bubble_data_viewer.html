@@ -31,7 +31,6 @@
             margin-top: 20px;
             font-size: 14px;
             white-space: nowrap;
-            /* Prevents text from wrapping and squishing columns */
         }
 
         th,
@@ -240,7 +239,6 @@
             <div class="search-bar">
                 <label style="font-size: 14px; font-weight: 500;">Search Bubble:</label>
                 <select id="search-field">
-                    <option value="">-- Select Field --</option>
                 </select>
                 <input type="text" id="search-value" placeholder="Search (exact matches only)...">
                 <button class="btn btn-primary" onclick="applyServerSearch()">Search DB</button>
@@ -275,8 +273,7 @@
         // column order constants
         let originalHeadersRaw = []; // Tracks original default index for the orderMap generator
         const APP_SETTINGS_TYPE = 'specialdataconstants'; // data type that stores custom column orders (lowercase, remove spaces)
-        const FIELD_NAME_PREFIX = 'column order [live]';
-        const FIELD_NAME_PREFIX_TEST = 'column order [test]';
+        const FIELD_NAME_PREFIX = 'column order';
 
         // Define your base table configurations
         const baseDataTypes = [
@@ -290,8 +287,8 @@
                 label: 'Special Data Constants',
             },
             {
-                value: 'giftcodes',
-                label: 'Gift Codes',
+                value: 'discountcodes',
+                label: 'Discount Codes',
             },
             {
                 value: 'personalrecords',
@@ -307,8 +304,7 @@
                 value: dt.value,
                 label: dt.label,
                 // Dynamically build the layout keys
-                layoutKeyLive: `${FIELD_NAME_PREFIX} ${final_suffix}`,
-                layoutKeyTest: `${FIELD_NAME_PREFIX_TEST} ${final_suffix}`
+                layoutKey: `${FIELD_NAME_PREFIX} ${final_suffix}`,
             };
         });
 
@@ -385,10 +381,12 @@
 
             // 3. Reset the Query Dropdown
             const searchFieldSelect = document.getElementById('search-field');
-            searchFieldSelect.innerHTML = '<option value="">-- Select Field --</option>';
+            searchFieldSelect.innerHTML = '';
             fieldsPopulated = false; // Forces the script to rescan the new data type's headers
 
-            // 4. Fetch new table data
+            // Clear layout cache so it re-fetches for the new configuration
+            settingsRecord = null;
+
             fetchAndRenderData();
         }
 
@@ -401,8 +399,10 @@
             container.innerHTML = '<div style="padding: 10px;">Fetching data...</div>';
 
             try {
-                // Fetch layout settings FIRST
+                // Only fetch settings if not already cached
+                if (!settingsRecord) {
                 await fetchSettings();
+                }
 
                 // Set up headers for authentication
                 const headersConfig = {};
@@ -451,14 +451,10 @@
                 });
                 detectedHeaders = Array.from(allKeysSet);
 
-                // capture orginal column order
-                originalHeadersRaw = [...detectedHeaders];
                 // --- DATABASE-DRIVEN COLUMN REORDERING ---
                 const currentTypeConfig = DATA_TYPES.find(dt => dt.value === currentType);
-                const isLive = VERSION === '';
-
                 // Grab the correct API field key from our config
-                const targetKey = isLive ? currentTypeConfig.layoutKeyLive : currentTypeConfig.layoutKeyTest;
+                const targetKey = currentTypeConfig.layoutKey;
 
                 let activeOrderMap = null;
 
@@ -472,15 +468,17 @@
                     }
                 }
 
+                // String-based column matching
                 if (activeOrderMap && activeOrderMap.length > 0) {
                     let reorderedHeaders = [];
 
-                    activeOrderMap.forEach(targetIndex => {
-                        if (detectedHeaders[targetIndex]) {
-                            reorderedHeaders.push(detectedHeaders[targetIndex]);
+                    activeOrderMap.forEach(headerName => {
+                        if (detectedHeaders.includes(headerName)) {
+                            reorderedHeaders.push(headerName);
                         }
                     });
 
+                    // Append any new or unsaved columns to the end
                     detectedHeaders.forEach(header => {
                         if (!reorderedHeaders.includes(header)) {
                             reorderedHeaders.push(header);
@@ -515,6 +513,13 @@
         function populateSearchFields(headers) {
             if (fieldsPopulated) return;
             const select = document.getElementById('search-field');
+            select.innerHTML = '';
+
+            // Set "All Fields" as the default combined search option
+            const allOption = document.createElement('option');
+            allOption.value = 'any_field';
+            allOption.text = 'All Fields';
+            select.appendChild(allOption);
 
             headers.forEach(header => {
                 const option = document.createElement('option');
@@ -523,6 +528,8 @@
                 option.style.textTransform = 'capitalize';
                 select.appendChild(option);
             });
+
+            select.value = 'any_field'; // Default to search all fields
             fieldsPopulated = true;
         }
 
@@ -636,7 +643,7 @@
 
             // Construct the Bubble API constraint object
             currentConstraints = [{
-                key: field,
+                key: field === 'any_field' ? 'any field' : field,
                 constraint_type: 'text contains',
                 value: value.trim()
             }];
@@ -648,7 +655,7 @@
 
         function clearServerSearch() {
             document.getElementById('search-value').value = '';
-            document.getElementById('search-field').value = '';
+            document.getElementById('search-field').value = 'any_field'; // Reset to default
             currentConstraints = [];
             currentCursor = 0;
             fetchAndRenderData();
@@ -749,7 +756,18 @@
                     const input = cell.querySelector('input');
 
                     if (input && input.value !== originalValue) {
-                        payload[field] = input.value;
+                        let val = input.value;
+
+                        // Basic Data Type Casting to prevent 400 errors on Save
+                        if (val.trim() !== '' && !isNaN(val)) {
+                            val = Number(val);
+                        } else if (val.toLowerCase() === 'true') {
+                            val = true;
+                        } else if (val.toLowerCase() === 'false') {
+                            val = false;
+                        }
+
+                        payload[field] = val;
                         hasChanges = true;
                     }
                 }
@@ -854,8 +872,8 @@
                 btn.className = 'btn';
                 btn.disabled = true; // Prevent clicking while saving
 
-                // Generate the new orderMap
-                const newMap = detectedHeaders.map(header => originalHeadersRaw.indexOf(header));
+                // Generate the new string-based orderMap
+                const newMap = detectedHeaders;
 
                 // Send to Bubble, then reset button text
                 saveColumnOrderToBubble(newMap).then(() => {
@@ -906,9 +924,7 @@
 
             const currentType = document.getElementById('data-type-selector').value;
             const currentTypeConfig = DATA_TYPES.find(dt => dt.value === currentType);
-            const isLive = VERSION === '';
-
-            const targetKey = isLive ? currentTypeConfig.layoutKeyLive : currentTypeConfig.layoutKeyTest;
+            const targetKey = currentTypeConfig.layoutKey;
 
             // Hardcode the target to the special data constants table and the specific settings record ID
             const fetchUrl = `${API_BASE_URL}${APP_SETTINGS_TYPE}/${settingsRecord._id}`;
