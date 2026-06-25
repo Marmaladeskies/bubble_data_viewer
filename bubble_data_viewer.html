@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-    
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -45,7 +45,7 @@
             top: 0;
             z-index: 10;
             /* Keeps the header above the scrolling data rows */
-            background-color: #f4f6f8;
+            background-color: #e4f1ff;
             /* Critical: prevents text from bleeding through */
             font-weight: 600;
             text-transform: capitalize;
@@ -60,8 +60,16 @@
             background-color: #e2e6ea;
         }
 
-        tr:hover {
-            background-color: #f9f9f9;
+        tbody tr:nth-child(even) {
+            background-color: #ffffff;
+        }
+
+        tbody tr:nth-child(odd) {
+            background-color: #f5f7f9;
+        }
+
+        tbody tr:hover {
+            background-color: #eaecef;
         }
 
         .error {
@@ -213,6 +221,41 @@
             background: #fff3cd;
             color: #856404;
         }
+
+        /* Icon Button Styles */
+        .icon-btn {
+            background: transparent;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            color: #444;
+            background-color: white;
+        }
+
+        .icon-btn:hover {
+            background: #e2e6ea;
+            color: #000;
+        }
+
+        .icon-btn:active {
+            background: #d3d9df;
+        }
+
+        /* Spin Animation for Refresh */
+        .spin {
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 
@@ -254,32 +297,42 @@
         </div>
     </div>
 
-    <div class="table-filter-container">
-        <input type="text" id="table-filter" class="filter-input" oninput="applyClientFilter()"
-            placeholder="Filter current view by keyword (all fields)...">
-        <span style="font-size: 12px; color: #666;">Filters this page only. Other matches may exist on Bubble.</span>
+    <div class="table-filter-container" style="justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <input type="text" id="table-filter" class="filter-input" oninput="applyClientFilter()"
+                placeholder="Filter current view by keyword (all fields)...">
+            <span style="font-size: 12px; color: #666;">Filters this page view only. Other matches may exist on the
+                server.</span>
+        </div>
+
+        <button id="refresh-btn" class="icon-btn" onclick="triggerRefresh()" title="Refresh Table Data">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+        </button>
     </div>
 
-    <div id="table-container">
-        <div style="padding: 10px;">Fetching data from Bubble...</div>
-    </div>
+    <div id="table-container"></div>
 
     <script>
         // --- CONFIGURATION ---
-        let VERSION = '/version-test'; // Default to test database
+        let VERSION = ''; // Default database to load: test = '/version-test' ; live = ''
         const DOMAIN_NAME = 'yourdomain.com'
         let API_BASE_URL = `https://${DOMAIN_NAME}${VERSION}/api/1.1/obj/`;
-        const API_TOKEN = '<your private API key (Bubble Settings>API>Admin API Tokens)>';
-        // column order constants
-        let originalHeadersRaw = []; // Tracks original default index for the orderMap generator
-        const APP_SETTINGS_TYPE = 'specialdataconstants'; // data type that stores custom column orders (lowercase, remove spaces)
-        const FIELD_NAME_PREFIX = 'column order';
+        const API_TOKEN = '<your_private_API_key>';
+        
+        // Optional Configuration for storing persisent column order
+        let originalHeadersRaw = [];
+        const APP_SETTINGS_TYPE = 'specialdataconstants'; // data type that stores custom column data (lowercase, remove spaces)
+        const FIELD_NAME_PREFIX = 'column order'; // arbitrary prefix all of the column sorting data field names in your database begin with
 
         // Define your base table configurations
         const baseDataTypes = [
             {
                 value: 'events', // Lowercase, no spaces. This must exactly match the value Bubble uses for the API
-                label: 'Events', // lowercase version of this is used as the field_name_suffix if no other suffix is provided
+                label: 'Events', // Lowercase version of this is used as the field_name_suffix if no other suffix is provided
                 //field_name_suffix: 'custom suffix' // must match the suffix part of the name of the column order field
             },
             {
@@ -321,7 +374,7 @@
         let isEditingColumns = false;
 
         // --- SORTING STATE ---
-        let sortField = 'Created Date'; 
+        let sortField = 'Created Date';
         let sortDescending = true; // true = newest first, false = oldest first
 
         // --- INITIALIZATION ---
@@ -337,6 +390,15 @@
             // Explicitly set the default value to the first item in the array
             if (DATA_TYPES.length > 0) {
                 selector.value = DATA_TYPES[0].value;
+            }
+
+            // Sync the version selector UI with the configuration variable
+            const versionSelector = document.getElementById('version-selector');
+            versionSelector.value = VERSION;
+            if (VERSION === '') {
+                versionSelector.className = 'badge-live';
+            } else {
+                versionSelector.className = 'badge-test';
             }
 
             fetchAndRenderData();
@@ -390,6 +452,21 @@
             fetchAndRenderData();
         }
 
+        // --- REFRESH ACTION ---
+        async function triggerRefresh() {
+            const refreshBtn = document.getElementById('refresh-btn');
+            const svgIcon = refreshBtn.querySelector('svg');
+
+            // Start spinning
+            svgIcon.classList.add('spin');
+
+            // Fetch the data (awaiting the completion)
+            await fetchAndRenderData();
+
+            // Stop spinning once data is loaded
+            svgIcon.classList.remove('spin');
+        }
+
         async function fetchAndRenderData() {
             const container = document.getElementById('table-container');
             const pageInfo = document.getElementById('page-info');
@@ -401,7 +478,7 @@
             try {
                 // Only fetch settings if not already cached
                 if (!settingsRecord) {
-                await fetchSettings();
+                    await fetchSettings();
                 }
 
                 // Set up headers for authentication
@@ -537,8 +614,8 @@
             // Extract column headers dynamically from the first record's keys
             let tableHTML = '<table><thead><tr>';
 
-            // Add Actions Column Header
-            tableHTML += '<th>Actions</th>';
+            // Add Edit Column Header
+            tableHTML += '<th></th>';
 
             // Generate Data Headers (Conditionally Draggable)
             headers.forEach((header, index) => {
@@ -758,13 +835,36 @@
                     if (input && input.value !== originalValue) {
                         let val = input.value;
 
+                        // Determine the expected type by looking at cachedRecords
+                        let expectedType = 'unknown';
+                        for (let record of cachedRecords) {
+                            if (record[field] !== null && record[field] !== undefined) {
+                                expectedType = typeof record[field];
+                                break;
+                            }
+                        }
+
                         // Basic Data Type Casting to prevent 400 errors on Save
-                        if (val.trim() !== '' && !isNaN(val)) {
-                            val = Number(val);
-                        } else if (val.toLowerCase() === 'true') {
-                            val = true;
-                        } else if (val.toLowerCase() === 'false') {
-                            val = false;
+                        if (expectedType === 'number') {
+                            if (val.trim() !== '' && !isNaN(val)) {
+                                val = Number(val);
+                            } else if (val.trim() === '') {
+                                val = null;
+                            }
+                        } else if (expectedType === 'boolean') {
+                            if (val.toLowerCase() === 'true') val = true;
+                            else if (val.toLowerCase() === 'false') val = false;
+                        } else if (expectedType === 'string') {
+                            // Leave as string to prevent "Expected a string, but got a number" errors
+                        } else {
+                            // Fallback to basic guessing if type is unknown (e.g. whole column is null)
+                            if (val.trim() !== '' && !isNaN(val)) {
+                                val = Number(val);
+                            } else if (val.toLowerCase() === 'true') {
+                                val = true;
+                            } else if (val.toLowerCase() === 'false') {
+                                val = false;
+                            }
                         }
 
                         payload[field] = val;
