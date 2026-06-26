@@ -1,13 +1,16 @@
 The default database admin UX (Data>App Data) in bubble.io editor is terrible, and using Bubble to build admin pages with custom tables to manage your database is not much better. Bubble is not great at building tables for data.
 
-This is a very simple, lightweight file that can be opened in any browser to manage your bubble database, just like you're using a webpage. That's it. This is all frontend code and does not require a python server or any setup beyond editing the bubble_data_viewer.html file to define your website, API key, and the name of the data types you want to access.
+<figure>
+  <img src="screenshots/default_view.png" alt="Screenshot" style="max-width: 100%;">
+  <figcaption>This is a very simple, lightweight file that can be opened in any browser to manage your bubble database, just like you're using a webpage. That's it. This is all frontend code and does not require a python server or any setup beyond editing the bubble_data_viewer.html file to define your website, API key, and the name of the data types you want to access.</figcaption>
+</figure>
 
 Features:
 - Setup and connect to your database in less than 5 minutes
 - Uses at least 10x less RAM than a bubble editor window in your browser.
 - Data tables load with columns in the same order every time
 - Columns can be reordered and their position can be saved permanently
-- No horizontal scroll glitches or bugs
+- Responsive design with no horizontal scroll glitches or bugs
 - Better UX for editing data (and type safety is enforced) than native bubble
 - And most importantly, you have all of this code, with no weird front-end limitations, so adding or making changes to this (with your favorite AI) is easier, faster, and more customizable than using bubble
 
@@ -17,7 +20,6 @@ Limitations:
 - yes/no values display as true/false
 - If every row of a given field on the page is empty, that field is not returned by the bubble API search and will not appear as a column in tables. Therefore it is possible for a completely empty column to disappear from one page to the next, or when switching from the live database to the test database.
 - Table data changes need to be refreshed manually unless you want to add webhooks and a python server to this.
-
 
 Basic Setup:
 
@@ -92,3 +94,9 @@ The following configuration of the bubble_data_viewer.html is all you need to sa
             }
         ];
   ~~~
+
+![Screenshot](screenshots/edit_row.png)
+
+![Screenshot](screenshots/add_row.png)
+
+![Screenshot](screenshots/delete_row.png)
