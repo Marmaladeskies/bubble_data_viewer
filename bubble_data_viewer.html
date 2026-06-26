@@ -703,42 +703,174 @@
         const API_TOKEN = '<your_private_API_key>';
         
         // Optional Configuration for storing persisent column order
-        let originalHeadersRaw = [];
+        let originalHeadersRaw = []; // Tracks original default index for the orderMap generator
         const APP_SETTINGS_TYPE = 'specialdataconstants'; // data type that stores custom column data (lowercase, remove spaces)
         const FIELD_NAME_PREFIX = 'column order'; // arbitrary prefix all of the column sorting data field names in your database begin with
 
-        // Define your base table configurations
-        const baseDataTypes = [
-            {
-                value: 'events', // Lowercase, no spaces. This must exactly match the value Bubble uses for the API
-                label: 'Events', // Lowercase version of this is used as the field_name_suffix if no other suffix is provided
-                //field_name_suffix: 'custom suffix' // must match the suffix part of the name of the column order field
-            },
-            {
-                value: 'specialdataconstants',
-                label: 'Special Data Constants',
-            },
-            {
-                value: 'discountcodes',
-                label: 'Discount Codes',
-            },
-            {
-                value: 'personalrecords',
-                label: 'Personal Records',
-            }
-        ];
-        // Automatically generate the full array with layout keys
-        const DATA_TYPES = baseDataTypes.map(dt => {
-            // Use the provided field_name_suffix, OR default to lowercasing the label
-            const final_suffix = dt.field_name_suffix || dt.label.toLowerCase();
+        // Types to exclude from the auto-generated dropdown (e.g. Bubble built-ins)
+        const EXCLUDED_TYPES = [];
 
-            return {
-                value: dt.value,
-                label: dt.label,
-                // Dynamically build the layout keys
-                layoutKey: `${FIELD_NAME_PREFIX} ${final_suffix}`,
-            };
-        });
+        // Build the full DATA_TYPES array with layout keys from a base list
+        function buildDataTypes(baseTypes) {
+            return baseTypes.map(dt => {
+                const final_suffix = dt.field_name_suffix || dt.label.toLowerCase();
+                return {
+                    value: dt.value,
+                    label: dt.label,
+                    layoutKey: `${FIELD_NAME_PREFIX} ${final_suffix}`,
+                };
+            });
+        }
+
+        let DATA_TYPES = [];
+
+        // --- OPTION SET STATE ---
+        // Maps option set slug (e.g. 'dropdown_options') to an array of string values
+        let cachedOptionSets = {};
+        // Maps data type slug -> field display name -> field meta object (id, display, type)
+        let cachedFieldMeta = {};
+
+        // Fetch available data types from Bubble's API meta endpoint
+        async function fetchDataTypesFromBubble() {
+            const metaUrl = `https://${DOMAIN_NAME}${VERSION}/api/1.1/meta`;
+            const response = await fetch(metaUrl, {
+                headers: { 'Authorization': `Bearer ${API_TOKEN}` }
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status} fetching API meta`);
+            const meta = await response.json();
+
+            const types = meta.types;
+            if (!types || typeof types !== 'object') {
+                throw new Error('No types found in API meta response');
+            }
+
+            // Cache field metadata for each type so we can look up option-set fields during editing
+            // The meta API returns field IDs but GET responses use display captions (use_captions_for_get)
+            // So we build a lookup: dataTypeSlug -> displayName -> { id, display, type }
+            cachedFieldMeta = {};
+            Object.entries(types).forEach(([typeSlug, typeInfo]) => {
+                const fieldMap = {};
+                if (typeInfo.fields) {
+                    typeInfo.fields.forEach(field => {
+                        if (field.display) fieldMap[field.display] = field;
+                        if (field.id) fieldMap[field.id] = field;
+                    });
+                }
+                cachedFieldMeta[typeSlug] = fieldMap;
+            });
+
+            // Build option slug -> display name mapping from get-options return_btype
+            optionSlugToDisplayName = {};
+            const getOptionsEndpoint = (meta.post || []).find(ep => ep.endpoint === 'get-options') || (meta.get || []).find(ep => ep.endpoint === 'get-options');
+            if (getOptionsEndpoint && getOptionsEndpoint.return_btype) {
+                Object.entries(getOptionsEndpoint.return_btype).forEach(([displayName, typeStr]) => {
+                    // typeStr is like 'list.option.dropdown_options'
+                    const match = typeStr.match(/^list\.option\.(.+)$/);
+                    if (match) {
+                        optionSlugToDisplayName[match[1]] = displayName;
+                    }
+                });
+            }
+            console.log(`Mapped ${Object.keys(optionSlugToDisplayName).length} option slug(s) to display names.`);
+
+            return Object.entries(types)
+                .map(([value, info]) => ({ value, label: info.display }))
+                .filter(dt => !EXCLUDED_TYPES.includes(dt.value))
+                .sort((a, b) => a.label.localeCompare(b.label));
+        }
+
+        // Fetch all option sets from the backend workflow API
+        async function fetchOptionSets() {
+            try {
+                let url = `https://${DOMAIN_NAME}${VERSION}/api/1.1/wf/get-options`;
+                let response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${API_TOKEN}`
+                    }
+                });
+                if (!response.ok && VERSION === '') {
+                    // Fallback to version-test if get-options is not deployed to live yet
+                    url = `https://${DOMAIN_NAME}/version-test/api/1.1/wf/get-options`;
+                    response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${API_TOKEN}`
+                        }
+                    });
+                }
+                if (!response.ok) throw new Error(`HTTP ${response.status} fetching option sets`);
+                const data = await response.json();
+                const resp = data.response || data;
+
+                // Build a map from option slug -> array of values
+                cachedOptionSets = {};
+                Object.entries(resp).forEach(([displayName, values]) => {
+                    if (Array.isArray(values)) {
+                        cachedOptionSets[displayName] = values;
+                    }
+                });
+
+                console.log(`Loaded ${Object.keys(cachedOptionSets).length} option sets from Bubble.`);
+            } catch (err) {
+                console.error('Failed to fetch option sets:', err);
+            }
+        }
+
+        // Look up which option set values apply to a given field based on meta schema
+        // Returns an array of option strings, or null if the field is not an option set type
+        function getOptionSetForField(dataTypeSlug, fieldDisplayName) {
+            const typeMeta = cachedFieldMeta[dataTypeSlug];
+            if (!typeMeta || !fieldDisplayName) return null;
+
+            let fieldMeta = typeMeta[fieldDisplayName];
+            if (!fieldMeta && typeof fieldDisplayName === 'string') {
+                const clean = fieldDisplayName.toLowerCase().trim();
+                fieldMeta = Object.values(typeMeta).find(f => 
+                    (f.display && f.display.toLowerCase().trim() === clean) ||
+                    (f.id && f.id.toLowerCase().trim() === clean)
+                );
+            }
+            if (!fieldMeta) return null;
+
+            const fieldType = fieldMeta.type; // e.g. 'option.dropdown_options' or 'option.times'
+            if (!fieldType || !fieldType.startsWith('option.')) return null;
+
+            const optionSlug = fieldType.replace('option.', ''); // e.g. 'dropdown_options', 'times'
+
+            for (const [displayName, values] of Object.entries(cachedOptionSets)) {
+                if (optionSlugMatchesDisplayName(optionSlug, displayName)) {
+                    return values;
+                }
+            }
+            return null;
+        }
+
+        // Resolve option slug to display name using the cached option set return types from meta
+        let optionSlugToDisplayName = {};
+
+        function optionSlugMatchesDisplayName(slug, displayName) {
+            if (optionSlugToDisplayName[slug] === displayName) return true;
+            if (slug.toLowerCase() === displayName.toLowerCase()) return true;
+            if (slug.replace(/_/g, ' ').toLowerCase() === displayName.toLowerCase()) return true;
+            return false;
+        }
+
+        // Rebuild DATA_TYPES and re-populate the selector dropdown
+        function rebuildDataTypes(baseTypes) {
+            DATA_TYPES = buildDataTypes(baseTypes);
+            const selector = document.getElementById('data-type-selector');
+            selector.innerHTML = '';
+            DATA_TYPES.forEach(dt => {
+                const option = document.createElement('option');
+                option.value = dt.value;
+                option.text = dt.label;
+                selector.appendChild(option);
+            });
+            if (DATA_TYPES.length > 0) {
+                selector.value = DATA_TYPES[0].value;
+            }
+        }
 
         // --- GLOBAL STATE ---
         let currentCursor = 0;
@@ -760,19 +892,13 @@
         let selectedRowIds = new Set();
 
         // --- INITIALIZATION ---
-        function initApp() {
-            const selector = document.getElementById('data-type-selector');
-            DATA_TYPES.forEach(dt => {
-                const option = document.createElement('option');
-                option.value = dt.value;
-                option.text = dt.label;
-                selector.appendChild(option);
-            });
+        async function initApp() {
+            const fetchedTypes = await fetchDataTypesFromBubble();
+            rebuildDataTypes(fetchedTypes);
+            console.log(`Auto-loaded ${fetchedTypes.length} data types from Bubble.`);
 
-            // Explicitly set the default value to the first item in the array
-            if (DATA_TYPES.length > 0) {
-                selector.value = DATA_TYPES[0].value;
-            }
+            // Fetch option sets and build the slug-to-display-name cross-reference
+            await fetchOptionSets();
 
             // Sync the version selector UI with the configuration variable
             const versionSelector = document.getElementById('version-selector');
@@ -1211,16 +1337,54 @@
                 const currentValue = cell.innerText;
                 cell.setAttribute('data-original', currentValue); // Store for cancellation
 
-                // Swap text for an input field
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.value = currentValue;
-                input.style.width = '100%';
-                input.style.minWidth = '100px';
-                input.style.boxSizing = 'border-box';
+                // Check if this field uses an option set type
+                const currentType = document.getElementById('data-type-selector').value;
+                const optionValues = getOptionSetForField(currentType, field);
 
                 cell.innerHTML = '';
-                cell.appendChild(input);
+
+                if (optionValues && optionValues.length > 0) {
+                    // Render a <select> dropdown for option set fields
+                    const select = document.createElement('select');
+                    select.style.width = '100%';
+                    select.style.minWidth = '100px';
+                    select.style.boxSizing = 'border-box';
+                    select.style.padding = '4px';
+
+                    // Add a blank option to allow clearing the value
+                    const blankOpt = document.createElement('option');
+                    blankOpt.value = '';
+                    blankOpt.text = '— none —';
+                    select.appendChild(blankOpt);
+
+                    optionValues.forEach(optVal => {
+                        const opt = document.createElement('option');
+                        opt.value = optVal;
+                        opt.text = optVal;
+                        if (optVal === currentValue) opt.selected = true;
+                        select.appendChild(opt);
+                    });
+
+                    // If current value wasn't found in options, add it as a custom entry
+                    if (currentValue && !optionValues.includes(currentValue)) {
+                        const customOpt = document.createElement('option');
+                        customOpt.value = currentValue;
+                        customOpt.text = `${currentValue} (custom)`;
+                        customOpt.selected = true;
+                        select.appendChild(customOpt);
+                    }
+
+                    cell.appendChild(select);
+                } else {
+                    // Default: render a text input for non-option-set fields
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = currentValue;
+                    input.style.width = '100%';
+                    input.style.minWidth = '100px';
+                    input.style.boxSizing = 'border-box';
+                    cell.appendChild(input);
+                }
             });
 
             // Update action buttons to Save/Cancel
@@ -1261,46 +1425,59 @@
             let payload = {};
             let hasChanges = false;
 
-            // 2. Loop through row, compare original values to input values, and build payload
+            // 2. Loop through row, compare original values to input/select values, and build payload
             cells.forEach(cell => {
                 if (cell.hasAttribute('data-original')) {
                     const field = cell.getAttribute('data-field');
                     const originalValue = cell.getAttribute('data-original');
                     const input = cell.querySelector('input');
+                    const select = cell.querySelector('select');
+                    const editEl = input || select; // Whichever edit element exists
 
-                    if (input && input.value !== originalValue) {
-                        let val = input.value;
+                    if (editEl && editEl.value !== originalValue) {
+                        let val = editEl.value;
 
-                        // Determine the expected type by looking at cachedRecords
-                        let expectedType = 'unknown';
-                        for (let record of cachedRecords) {
-                            if (record[field] !== null && record[field] !== undefined) {
-                                expectedType = typeof record[field];
-                                break;
+                        // Option set fields are always strings — skip type casting
+                        const currentType = document.getElementById('data-type-selector').value;
+                        const isOptionSet = !!getOptionSetForField(currentType, field);
+
+                        if (!isOptionSet) {
+                            // Determine the expected type by looking at cachedRecords
+                            let expectedType = 'unknown';
+                            for (let record of cachedRecords) {
+                                if (record[field] !== null && record[field] !== undefined) {
+                                    expectedType = typeof record[field];
+                                    break;
+                                }
+                            }
+
+                            // Basic Data Type Casting to prevent 400 errors on Save
+                            if (expectedType === 'number') {
+                                if (val.trim() !== '' && !isNaN(val)) {
+                                    val = Number(val);
+                                } else if (val.trim() === '') {
+                                    val = null;
+                                }
+                            } else if (expectedType === 'boolean') {
+                                if (val.toLowerCase() === 'true') val = true;
+                                else if (val.toLowerCase() === 'false') val = false;
+                            } else if (expectedType === 'string') {
+                                // Leave as string to prevent "Expected a string, but got a number" errors
+                            } else {
+                                // Fallback to basic guessing if type is unknown (e.g. whole column is null)
+                                if (val.trim() !== '' && !isNaN(val)) {
+                                    val = Number(val);
+                                } else if (val.toLowerCase() === 'true') {
+                                    val = true;
+                                } else if (val.toLowerCase() === 'false') {
+                                    val = false;
+                                }
                             }
                         }
 
-                        // Basic Data Type Casting to prevent 400 errors on Save
-                        if (expectedType === 'number') {
-                            if (val.trim() !== '' && !isNaN(val)) {
-                                val = Number(val);
-                            } else if (val.trim() === '') {
-                                val = null;
-                            }
-                        } else if (expectedType === 'boolean') {
-                            if (val.toLowerCase() === 'true') val = true;
-                            else if (val.toLowerCase() === 'false') val = false;
-                        } else if (expectedType === 'string') {
-                            // Leave as string to prevent "Expected a string, but got a number" errors
-                        } else {
-                            // Fallback to basic guessing if type is unknown (e.g. whole column is null)
-                            if (val.trim() !== '' && !isNaN(val)) {
-                                val = Number(val);
-                            } else if (val.toLowerCase() === 'true') {
-                                val = true;
-                            } else if (val.toLowerCase() === 'false') {
-                                val = false;
-                            }
+                        // For option set fields, send empty string as null to clear the value
+                        if (isOptionSet && val === '') {
+                            val = null;
                         }
 
                         payload[field] = val;
@@ -1342,8 +1519,10 @@
                 cells.forEach(cell => {
                     if (cell.hasAttribute('data-original')) {
                         const input = cell.querySelector('input');
-                        if (input) {
-                            const newValue = input.value;
+                        const select = cell.querySelector('select');
+                        const editEl = input || select;
+                        if (editEl) {
+                            const newValue = editEl.value;
                             cell.innerText = newValue;
                             cell.removeAttribute('data-original');
 
@@ -1543,6 +1722,7 @@
             </td>`;
 
             // Data cells — editable inputs for user-writable fields, blank for system fields
+            const currentType = document.getElementById('data-type-selector').value;
             detectedHeaders.forEach(header => {
                 const td = document.createElement('td');
                 td.setAttribute('data-field', header);
@@ -1550,14 +1730,40 @@
                 if (header === '_id' || header === 'Created Date' || header === 'Modified Date' || header === 'Created By') {
                     td.innerHTML = '<span style="color: #999; font-style: italic; font-size: 12px;">auto</span>';
                 } else {
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.value = '';
-                    input.placeholder = header.replace(/_/g, ' ');
-                    input.style.width = '100%';
-                    input.style.minWidth = '100px';
-                    input.style.boxSizing = 'border-box';
-                    td.appendChild(input);
+                    // Check if this field uses an option set type
+                    const optionValues = getOptionSetForField(currentType, header);
+
+                    if (optionValues && optionValues.length > 0) {
+                        // Render a <select> dropdown for option set fields
+                        const select = document.createElement('select');
+                        select.style.width = '100%';
+                        select.style.minWidth = '100px';
+                        select.style.boxSizing = 'border-box';
+                        select.style.padding = '4px';
+
+                        const blankOpt = document.createElement('option');
+                        blankOpt.value = '';
+                        blankOpt.text = '— select —';
+                        select.appendChild(blankOpt);
+
+                        optionValues.forEach(optVal => {
+                            const opt = document.createElement('option');
+                            opt.value = optVal;
+                            opt.text = optVal;
+                            select.appendChild(opt);
+                        });
+
+                        td.appendChild(select);
+                    } else {
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = '';
+                        input.placeholder = header.replace(/_/g, ' ');
+                        input.style.width = '100%';
+                        input.style.minWidth = '100px';
+                        input.style.boxSizing = 'border-box';
+                        td.appendChild(input);
+                    }
                 }
                 newRow.appendChild(td);
             });
@@ -1592,26 +1798,34 @@
                 if (field === '_id' || field === 'Created Date' || field === 'Modified Date' || field === 'Created By') return;
 
                 const input = cell.querySelector('input');
-                if (!input) return;
+                const select = cell.querySelector('select');
+                const editEl = input || select;
+                if (!editEl) return;
 
-                let val = input.value;
+                let val = editEl.value;
                 if (val.trim() === '') return; // Don't send empty fields
 
-                // Determine the expected type by looking at cachedRecords
-                let expectedType = 'unknown';
-                for (let record of cachedRecords) {
-                    if (record[field] !== null && record[field] !== undefined) {
-                        expectedType = typeof record[field];
-                        break;
-                    }
-                }
+                // Check if this is an option set field (skip type casting)
+                const currentType = document.getElementById('data-type-selector').value;
+                const isOptionSet = !!getOptionSetForField(currentType, field);
 
-                // Basic data type casting
-                if (expectedType === 'number') {
-                    if (!isNaN(val)) val = Number(val);
-                } else if (expectedType === 'boolean') {
-                    if (val.toLowerCase() === 'true') val = true;
-                    else if (val.toLowerCase() === 'false') val = false;
+                if (!isOptionSet) {
+                    // Determine the expected type by looking at cachedRecords
+                    let expectedType = 'unknown';
+                    for (let record of cachedRecords) {
+                        if (record[field] !== null && record[field] !== undefined) {
+                            expectedType = typeof record[field];
+                            break;
+                        }
+                    }
+
+                    // Basic data type casting
+                    if (expectedType === 'number') {
+                        if (!isNaN(val)) val = Number(val);
+                    } else if (expectedType === 'boolean') {
+                        if (val.toLowerCase() === 'true') val = true;
+                        else if (val.toLowerCase() === 'false') val = false;
+                    }
                 }
 
                 payload[field] = val;
@@ -1654,7 +1868,7 @@
         initApp();
 
         // --- ENVIRONMENT SWITCHING ---
-        function handleVersionChange() {
+        async function handleVersionChange() {
             const selector = document.getElementById('version-selector');
 
             // 1. Update the configuration variables based on the dropdown
@@ -1668,7 +1882,15 @@
                 selector.className = 'badge-test';
             }
 
-            // 3. Reset state and fetch the data for the newly selected environment
+            // 3. Re-fetch data types for the new version (types may differ between test/live)
+            const fetchedTypes = await fetchDataTypesFromBubble();
+            rebuildDataTypes(fetchedTypes);
+            console.log(`Re-loaded ${fetchedTypes.length} data types for ${VERSION || 'live'} version.`);
+
+            // 4. Re-fetch option sets for the new version
+            await fetchOptionSets();
+
+            // 5. Reset state and fetch the data for the newly selected environment
             handleDataTypeChange();
         }
 
