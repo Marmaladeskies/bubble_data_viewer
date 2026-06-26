@@ -20,7 +20,7 @@
             /* Enables vertical scrolling */
             overflow-x: auto;
             /* Enables horizontal scrolling */
-            margin-top: 15px;
+            margin-top: 5px;
             border: 1px solid #ddd;
             border-radius: 4px;
         }
@@ -28,7 +28,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 7px;
             font-size: 14px;
             white-space: nowrap;
         }
@@ -72,6 +72,30 @@
             background-color: #eaecef;
         }
 
+        /* Selected Row Styling */
+        tbody tr.row-selected {
+            background-color: #cce5ff !important;
+        }
+
+        tbody tr.row-selected:hover {
+            background-color: #b8daff !important;
+        }
+
+        /* Checkbox Column */
+        .select-cell {
+            width: 26px;
+            min-width: 16px !important;
+            text-align: center;
+            padding: 0px !important;
+        }
+
+        .select-cell input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: #007bff;
+        }
+
         .error {
             color: red;
             font-weight: bold;
@@ -89,7 +113,7 @@
             gap: 15px;
         }
 
-        .toolbar-header {
+        .active-table-group {
             display: flex;
             align-items: center;
             gap: 15px;
@@ -104,6 +128,10 @@
             align-items: center;
         }
 
+        #search-field {
+            max-width: fit-content;
+        }
+
         .search-bar {
             display: flex;
             gap: 8px;
@@ -114,21 +142,57 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-top: 15px;
-            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            margin-top: 5px;
         }
 
         /* Inline Table Filter */
         .table-filter-container {
             margin-top: 20px;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .input-wrapper input[type="text"] {
+            width: 100%;
+            padding-right: 30px;
+        }
+
+        .input-clear-btn {
+            position: absolute;
+            right: 6px;
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 6px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            border-radius: 4px;
+        }
+
+        .input-clear-btn:hover {
+            color: #222;
         }
 
         .filter-input {
-            width: 300px;
+            width: 100%;
+            box-sizing: border-box;
             padding: 8px;
+            padding-right: 30px;
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 14px;
@@ -141,12 +205,25 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23444444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 34px;
+            cursor: pointer;
         }
 
         select#data-type-selector {
             font-weight: 600;
             font-size: 15px;
-            padding: 8px 12px;
+            padding: 8px 36px 8px 12px;
+            max-width: fit-content;
         }
 
         .btn {
@@ -157,6 +234,46 @@
             background: white;
             border-radius: 4px;
             font-weight: 500;
+            max-width: 125px;
+        }
+
+        #edit-columns-link {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 400;
+            font-size: 14px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        #edit-columns-link:hover {
+            text-decoration: underline;
+            color: #0056b3;
+        }
+
+        #edit-columns-link.edit-link-active {
+            color: #007bff;
+            font-weight: 600;
+        }
+
+        #edit-columns-link.edit-link-saving {
+            color: #999;
+            pointer-events: none;
+        }
+
+        .edit-link {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 400;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .edit-link:hover {
+            text-decoration: underline;
+            color: #0056b3;
         }
 
         .btn:disabled {
@@ -166,6 +283,58 @@
 
         .btn:hover:not(:disabled) {
             background: #e2e6ea;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #c82333;
+        }
+
+        /* New Row Styling */
+        tbody tr.new-row-adding {
+            background-color: #e6ffe6 !important;
+        }
+
+        tbody tr.new-row-adding:hover {
+            background-color: #d0f5d0 !important;
+        }
+
+        tbody tr.new-row-adding td input {
+            background: #fff;
+            border: 1px solid #a3d9a5;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #218838;
+        }
+
+        /* Delete bar shown when rows are selected */
+        .selection-bar {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 15px;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .selection-bar.visible {
+            display: flex;
         }
 
         .btn-primary {
@@ -202,7 +371,7 @@
         /* Version Indicator Dropdown Badge */
         select#version-selector {
             font-size: 20px;
-            padding: 4px 10px;
+            padding: 4px 32px 4px 10px;
             border-radius: 12px;
             border: none;
             font-weight: 600;
@@ -213,21 +382,23 @@
         }
 
         select#version-selector.badge-live {
-            background: #d0ffcf;
+            background-color: #d0ffcf;
             color: #047d00;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23047d00' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
         }
 
         select#version-selector.badge-test {
-            background: #fff3cd;
+            background-color: #fff3cd;
             color: #856404;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23856404' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
         }
 
         /* Icon Button Styles */
         .icon-btn {
             background: transparent;
-            border: 1px solid #ddd;
+            border: 1px solid #ccc;
             cursor: pointer;
-            padding: 6px;
+            padding: 9px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -235,6 +406,9 @@
             transition: all 0.2s ease;
             color: #444;
             background-color: white;
+            box-sizing: border-box;
+            height: 36px;
+            width: 36px;
         }
 
         .icon-btn:hover {
@@ -246,6 +420,43 @@
             background: #d3d9df;
         }
 
+        .icon-btn.btn-success {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+
+        .icon-btn.btn-success:hover {
+            background-color: #218838;
+            border-color: #218838;
+            color: white;
+        }
+
+        .icon-btn.btn-success:active {
+            background-color: #1e7e34;
+            border-color: #1e7e34;
+            color: white;
+        }
+
+        #add-row-btn {
+            width: auto;
+            gap: 6px;
+            padding: 6px 12px;
+        }
+
+        #column-order-refresh-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+        }
+
+        .action-buttons {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         /* Spin Animation for Refresh */
         .spin {
             animation: spin 0.8s linear infinite;
@@ -254,6 +465,148 @@
         @keyframes spin {
             100% {
                 transform: rotate(360deg);
+            }
+        }
+
+        /* Cell Phone & Small Screen Responsive Layout */
+        @media (max-width: 668px) {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 22px;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 10px;
+                margin-top: 10px;
+            }
+
+            select#version-selector {
+                margin-left: 0;
+                font-size: 16px;
+            }
+
+            .toolbar {
+                padding: 12px;
+                gap: 12px;
+            }
+
+            select#data-type-selector {
+                flex: 1 1 100%;
+            }
+
+            .search-group {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .search-bar {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .search-bar label {
+                flex: 1 1 100%;
+            }
+
+            .search-bar select,
+            .search-bar input[type="text"],
+            .search-bar .input-wrapper,
+            .search-bar button {
+                flex: 1 1 100%;
+                width: 100%;
+            }
+
+            .badge {
+                display: block;
+                line-height: 1.4;
+                max-width: fit-content;
+            }
+
+            .controls {
+                flex-wrap: wrap;
+                gap: 12px;
+                justify-content: space-between;
+                text-align: center;
+            }
+
+            #page-info {
+                flex: 1 1 100%;
+                order: 1;
+            }
+
+            .controls button {
+                flex: 1 1 calc(50% - 6px);
+            }
+
+            .selection-bar {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            #selection-count {
+                flex: 1 1 100%;
+            }
+
+            .selection-bar button {
+                flex: 1 1 calc(50% - 5px);
+            }
+
+            #column-order-refresh-group {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                width: 100%;
+                gap: 8px;
+            }
+
+            .action-buttons {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                width: 100%;
+            }
+
+            .table-filter-container {
+                flex-direction: column;
+                align-items: stretch !important;
+                gap: 12px;
+            }
+
+            .table-filter-container>div:first-child {
+                width: 100%;
+            }
+
+            .filter-input,
+            .table-filter-container .input-wrapper {
+                width: 100% !important;
+            }
+
+            #edit-columns-link {
+                font-size: 14px;
+            }
+
+            .icon-btn {
+                width: 40px;
+                height: 40px;
+            }
+
+            #table-container {
+                max-height: 70vh;
+            }
+
+            th,
+            td {
+                padding: 8px 6px;
+            }
+
+            .edit-link {
+                font-size: 13px;
+                padding: 4px 2px;
+                display: inline-block;
             }
         }
     </style>
@@ -267,51 +620,77 @@
             <option value="">Live</option>
         </select>
     </h1>
-
+    <div class="active-table-group">
+        <label style="font-size: 15px; font-weight: 600;">Active Table:</label>
+        <select id="data-type-selector" onchange="handleDataTypeChange()">
+        </select>
+    </div>
     <div class="toolbar">
-        <div class="toolbar-header">
-            <label style="font-size: 15px; font-weight: 600;">Active Table:</label>
-            <select id="data-type-selector" onchange="handleDataTypeChange()">
-            </select>
-
-            <button id="edit-columns-btn" class="btn" onclick="toggleColumnEditMode()" style="margin-left: auto;">Edit
-                Column Order</button>
-        </div>
-
         <div class="search-group">
             <div class="search-bar">
                 <label style="font-size: 14px; font-weight: 500;">Search Bubble:</label>
                 <select id="search-field">
                 </select>
-                <input type="text" id="search-value" placeholder="Search (exact matches only)...">
-                <button class="btn btn-primary" onclick="applyServerSearch()">Search DB</button>
-                <button class="btn" onclick="clearServerSearch()">Clear Query</button>
+                <div class="input-wrapper" style="flex: 1; min-width: 200px;">
+                    <input type="text" id="search-value" placeholder="Search (exact matches only)..."
+                        oninput="toggleClearBtn('search-value', 'clear-search-btn')"
+                        onkeydown="if(event.key === 'Enter') applyServerSearch()">
+                    <button type="button" id="clear-search-btn" class="input-clear-btn" onclick="clearServerSearch()"
+                        title="Clear search" style="display: none;">×</button>
+                </div>
+                <button class="btn btn-primary" onclick="applyServerSearch()"
+                    style="max-width: fit-content;">Search</button>
             </div>
             <span class="badge">Bubble's search is limited to exact matches only.</span>
         </div>
+    </div>
 
-        <div class="controls">
-            <button id="prev-btn" class="btn" onclick="prevPage()" disabled>Previous</button>
-            <span id="page-info">Loading...</span>
-            <button id="next-btn" class="btn" onclick="nextPage()" disabled>Next</button>
-        </div>
+    <div id="selection-bar" class="selection-bar">
+        <span id="selection-count">0 rows selected</span>
+        <button class="btn btn-danger" onclick="deleteSelectedRows()">Delete Selected</button>
+        <button class="btn" onclick="clearSelection()">Clear Selection</button>
     </div>
 
     <div class="table-filter-container" style="justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <input type="text" id="table-filter" class="filter-input" oninput="applyClientFilter()"
-                placeholder="Filter current view by keyword (all fields)...">
+        <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+            <div class="input-wrapper" style="width: 400px; max-width: 400px;">
+                <input type="text" id="table-filter" class="filter-input"
+                    oninput="applyClientFilter(); toggleClearBtn('table-filter', 'clear-filter-btn')"
+                    placeholder="Filter current view by keyword (all fields)...">
+                <button type="button" id="clear-filter-btn" class="input-clear-btn" onclick="clearClientFilter()"
+                    title="Clear filter" style="display: none;">×</button>
+            </div>
             <span style="font-size: 12px; color: #666;">Filters this page view only. Other matches may exist on the
                 server.</span>
         </div>
 
-        <button id="refresh-btn" class="icon-btn" onclick="triggerRefresh()" title="Refresh Table Data">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-            </svg>
-        </button>
+        <div id="column-order-refresh-group">
+            <div class="action-buttons">
+                <button id="add-row-btn" class="icon-btn btn-success" onclick="addNewRow()" title="Add New Row">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add New Row
+                </button>
+                <button id="refresh-btn" class="icon-btn" onclick="triggerRefresh()" title="Refresh Table Data">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                </button>
+            </div>
+            <a href="#" id="edit-columns-link" onclick="event.preventDefault(); toggleColumnEditMode()">Edit Column
+                Order</a>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="prev-btn" class="btn" onclick="prevPage()" disabled style="display: none;">Previous</button>
+        <span id="page-info">Loading...</span>
+        <button id="next-btn" class="btn" onclick="nextPage()" disabled style="display: none;">Next</button>
     </div>
 
     <div id="table-container"></div>
@@ -368,7 +747,7 @@
         let fieldsPopulated = false;
         let cachedRecords = []; // Holds raw server results for local filtering
         let detectedHeaders = []; // Holds absolute unique columns
-        let settingsRecord = null; // Holds your centralized database constants layout settings
+        let settingsRecord = null; // Holds your backend database constants layout settings
 
         // --- COLUMN REORDERING STATE ---
         let isEditingColumns = false;
@@ -376,6 +755,9 @@
         // --- SORTING STATE ---
         let sortField = 'Created Date';
         let sortDescending = true; // true = newest first, false = oldest first
+
+        // --- SELECTION STATE ---
+        let selectedRowIds = new Set();
 
         // --- INITIALIZATION ---
         function initApp() {
@@ -420,7 +802,7 @@
                     }
                 }
             } catch (err) {
-                console.error("Failed to load special data constants:", err);
+                console.error("Failed to load backend data constants:", err);
             }
         }
 
@@ -428,8 +810,8 @@
         function handleDataTypeChange() {
             // 0. Reset Column Edit Mode
             isEditingColumns = false;
-            document.getElementById('edit-columns-btn').innerText = "Edit Column Order";
-            document.getElementById('edit-columns-btn').className = 'btn';
+            document.getElementById('edit-columns-link').innerText = "Edit Column Order";
+            document.getElementById('edit-columns-link').className = '';
 
             // 1. Reset Pagination & Sorting
             currentCursor = 0;
@@ -440,11 +822,17 @@
             currentConstraints = [];
             document.getElementById('search-value').value = '';
             document.getElementById('table-filter').value = '';
+            toggleClearBtn('search-value', 'clear-search-btn');
+            toggleClearBtn('table-filter', 'clear-filter-btn');
 
             // 3. Reset the Query Dropdown
             const searchFieldSelect = document.getElementById('search-field');
             searchFieldSelect.innerHTML = '';
             fieldsPopulated = false; // Forces the script to rescan the new data type's headers
+
+            // 4. Clear Row Selections
+            selectedRowIds.clear();
+            updateSelectionBar();
 
             // Clear layout cache so it re-fetches for the new configuration
             settingsRecord = null;
@@ -518,6 +906,14 @@
                     container.innerHTML = '<div style="padding: 10px;">No records found matching your database query.</div>';
                     pageInfo.innerText = 'No records';
                     nextBtn.disabled = true;
+                    prevBtn.disabled = currentCursor === 0;
+                    if (prevBtn.disabled && nextBtn.disabled) {
+                        prevBtn.style.display = 'none';
+                        nextBtn.style.display = 'none';
+                    } else {
+                        prevBtn.style.display = '';
+                        nextBtn.style.display = '';
+                    }
                     return;
                 }
 
@@ -535,7 +931,7 @@
 
                 let activeOrderMap = null;
 
-                // Look for the array inside the special database constant settings record instead of cachedRecords
+                // Look for the array inside the backend database constant settings record instead of cachedRecords
                 if (settingsRecord && settingsRecord[targetKey]) {
                     const rawMap = settingsRecord[targetKey];
                     if (Array.isArray(rawMap)) {
@@ -570,6 +966,7 @@
 
                 // Clear the local text input when turning pages/requerying, then render
                 document.getElementById('table-filter').value = '';
+                toggleClearBtn('table-filter', 'clear-filter-btn');
                 renderTable(cachedRecords, detectedHeaders, container);
 
                 const startRecord = currentCursor + 1;
@@ -579,6 +976,14 @@
                 // Toggle button states
                 prevBtn.disabled = currentCursor === 0;
                 nextBtn.disabled = remaining === 0;
+
+                if (prevBtn.disabled && nextBtn.disabled) {
+                    prevBtn.style.display = 'none';
+                    nextBtn.style.display = 'none';
+                } else {
+                    prevBtn.style.display = '';
+                    nextBtn.style.display = '';
+                }
 
             } catch (error) {
                 console.error("Fetch error:", error);
@@ -614,6 +1019,13 @@
             // Extract column headers dynamically from the first record's keys
             let tableHTML = '<table><thead><tr>';
 
+            // Add Select-All Checkbox Header
+            const allChecked = records.length > 0 && records.every(r => selectedRowIds.has(r._id));
+            tableHTML += `<th class="select-cell">
+                            <input type="checkbox" title="Select all rows" ${allChecked ? 'checked' : ''}
+                                   onchange="toggleSelectAll(this.checked)">
+                          </th>`;
+
             // Add Edit Column Header
             tableHTML += '<th></th>';
 
@@ -646,12 +1058,19 @@
 
             // Generate Data Rows
             records.forEach(record => {
+                const isSelected = selectedRowIds.has(record._id);
                 // Attach the _id to the tr element so we can target the whole row
-                tableHTML += `<tr id="row-${record._id}">`;
+                tableHTML += `<tr id="row-${record._id}" class="${isSelected ? 'row-selected' : ''}">`;
+
+                // Add Row Checkbox cell
+                tableHTML += `<td class="select-cell">
+                                <input type="checkbox" ${isSelected ? 'checked' : ''}
+                                       onchange="toggleRowSelection('${record._id}', this.checked)">
+                              </td>`;
 
                 // Add the explicit Edit Button cell
                 tableHTML += `<td class="action-cell">
-                                <button class="btn" style="padding: 4px 8px; font-size: 12px;" onclick="editRow('${record._id}')">Edit</button>
+                                <a href="#" class="edit-link" onclick="event.preventDefault(); editRow('${record._id}')">Edit</a>
                               </td>`;
 
                 headers.forEach(header => {
@@ -733,9 +1152,26 @@
         function clearServerSearch() {
             document.getElementById('search-value').value = '';
             document.getElementById('search-field').value = 'any_field'; // Reset to default
-            currentConstraints = [];
-            currentCursor = 0;
-            fetchAndRenderData();
+            toggleClearBtn('search-value', 'clear-search-btn');
+            if (currentConstraints.length > 0) {
+                currentConstraints = [];
+                currentCursor = 0;
+                fetchAndRenderData();
+            }
+        }
+
+        function clearClientFilter() {
+            document.getElementById('table-filter').value = '';
+            toggleClearBtn('table-filter', 'clear-filter-btn');
+            applyClientFilter();
+        }
+
+        function toggleClearBtn(inputId, btnId) {
+            const input = document.getElementById(inputId);
+            const btn = document.getElementById(btnId);
+            if (input && btn) {
+                btn.style.display = input.value.length > 0 ? 'flex' : 'none';
+            }
         }
 
         // --- SERVER SIDE SORTING ---
@@ -811,7 +1247,7 @@
 
             // Restore the primary Edit button
             const actionCell = row.querySelector('.action-cell');
-            actionCell.innerHTML = `<button class="btn" style="padding: 4px 8px; font-size: 12px;" onclick="editRow('${recordId}')">Edit</button>`;
+            actionCell.innerHTML = `<a href="#" class="edit-link" onclick="event.preventDefault(); editRow('${recordId}')">Edit</a>`;
         }
 
         async function saveRow(recordId) {
@@ -922,12 +1358,294 @@
                 });
 
                 // Restore Edit Button
-                actionCell.innerHTML = `<button class="btn" style="padding: 4px 8px; font-size: 12px;" onclick="editRow('${recordId}')">Edit</button>`;
+                actionCell.innerHTML = `<a href="#" class="edit-link" onclick="event.preventDefault(); editRow('${recordId}')">Edit</a>`;
 
             } catch (error) {
                 console.error("Save error:", error);
                 alert(`Failed to save to Bubble: ${error.message}`);
                 // Revert to Save/Cancel buttons so they can try again
+                actionCell.innerHTML = originalActions;
+            }
+        }
+
+        // --- ROW SELECTION & DELETION ---
+        function toggleRowSelection(recordId, isChecked) {
+            if (isChecked) {
+                selectedRowIds.add(recordId);
+            } else {
+                selectedRowIds.delete(recordId);
+            }
+            // Update row highlight without full re-render
+            const row = document.getElementById(`row-${recordId}`);
+            if (row) {
+                row.classList.toggle('row-selected', isChecked);
+            }
+            updateSelectAllCheckbox();
+            updateSelectionBar();
+        }
+
+        function toggleSelectAll(isChecked) {
+            // Operate on currently visible (possibly filtered) records
+            const filterValue = document.getElementById('table-filter').value.trim().toLowerCase();
+            const visibleRecords = filterValue
+                ? cachedRecords.filter(record =>
+                    Object.values(record).some(val => {
+                        if (val === null || val === undefined) return false;
+                        const s = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                        return s.toLowerCase().includes(filterValue);
+                    }))
+                : cachedRecords;
+
+            visibleRecords.forEach(record => {
+                if (isChecked) {
+                    selectedRowIds.add(record._id);
+                } else {
+                    selectedRowIds.delete(record._id);
+                }
+                const row = document.getElementById(`row-${record._id}`);
+                if (row) {
+                    row.classList.toggle('row-selected', isChecked);
+                    const cb = row.querySelector('.select-cell input[type="checkbox"]');
+                    if (cb) cb.checked = isChecked;
+                }
+            });
+            updateSelectionBar();
+        }
+
+        function updateSelectAllCheckbox() {
+            const selectAllCb = document.querySelector('thead .select-cell input[type="checkbox"]');
+            if (!selectAllCb) return;
+            const rows = document.querySelectorAll('tbody tr');
+            if (rows.length === 0) { selectAllCb.checked = false; return; }
+            const allChecked = Array.from(rows).every(row => {
+                const cb = row.querySelector('.select-cell input[type="checkbox"]');
+                return cb && cb.checked;
+            });
+            selectAllCb.checked = allChecked;
+        }
+
+        function updateSelectionBar() {
+            const bar = document.getElementById('selection-bar');
+            const countSpan = document.getElementById('selection-count');
+            const count = selectedRowIds.size;
+            if (count > 0) {
+                bar.classList.add('visible');
+                countSpan.textContent = `${count} row${count !== 1 ? 's' : ''} selected`;
+            } else {
+                bar.classList.remove('visible');
+            }
+        }
+
+        function clearSelection() {
+            selectedRowIds.clear();
+            // Uncheck all visible checkboxes and remove highlights
+            document.querySelectorAll('tbody tr').forEach(row => {
+                row.classList.remove('row-selected');
+                const cb = row.querySelector('.select-cell input[type="checkbox"]');
+                if (cb) cb.checked = false;
+            });
+            updateSelectAllCheckbox();
+            updateSelectionBar();
+        }
+
+        async function deleteSelectedRows() {
+            const count = selectedRowIds.size;
+            if (count === 0) return;
+
+            const confirmed = window.confirm(
+                `Are you sure you want to permanently delete ${count} row${count !== 1 ? 's' : ''}?\n\nThis action cannot be undone.`
+            );
+            if (!confirmed) return;
+
+            const currentType = document.getElementById('data-type-selector').value;
+            const bar = document.getElementById('selection-bar');
+            const countSpan = document.getElementById('selection-count');
+            const idsToDelete = Array.from(selectedRowIds);
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (let i = 0; i < idsToDelete.length; i++) {
+                const id = idsToDelete[i];
+                countSpan.textContent = `Deleting ${i + 1} of ${count}...`;
+
+                try {
+                    const fetchUrl = `${API_BASE_URL}${currentType}/${id}`;
+                    const response = await fetch(fetchUrl, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${API_TOKEN}` }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    // Remove from local cache
+                    cachedRecords = cachedRecords.filter(r => r._id !== id);
+                    selectedRowIds.delete(id);
+
+                    // Remove the row from the DOM immediately
+                    const row = document.getElementById(`row-${id}`);
+                    if (row) row.remove();
+
+                    successCount++;
+                } catch (error) {
+                    console.error(`Failed to delete ${id}:`, error);
+                    failCount++;
+                }
+            }
+
+            // Update UI
+            updateSelectAllCheckbox();
+            updateSelectionBar();
+
+            // Report results
+            let msg = `Deleted ${successCount} row${successCount !== 1 ? 's' : ''} successfully.`;
+            if (failCount > 0) {
+                msg += `\n${failCount} deletion${failCount !== 1 ? 's' : ''} failed. Check the console for details.`;
+            }
+            alert(msg);
+
+            // If all visible rows were deleted, refresh to load more
+            if (cachedRecords.length === 0) {
+                fetchAndRenderData();
+            }
+        }
+
+        // --- CREATE NEW ROW ---
+        let isAddingNewRow = false;
+
+        function addNewRow() {
+            if (isAddingNewRow) return; // Prevent duplicate new rows
+            if (detectedHeaders.length === 0) {
+                alert('Load a table first before adding a row.');
+                return;
+            }
+            isAddingNewRow = true;
+
+            const tbody = document.querySelector('#table-container table tbody');
+            if (!tbody) return;
+
+            // Build a new row with empty inputs for each editable field
+            const newRow = document.createElement('tr');
+            newRow.id = 'row-new';
+            newRow.classList.add('new-row-adding');
+
+            // Empty checkbox cell
+            newRow.innerHTML = '<td class="select-cell"></td>';
+
+            // Action cell with Save/Cancel
+            newRow.innerHTML += `<td class="action-cell">
+                <div style="display: flex; gap: 5px; flex-direction: column;">
+                    <button class="btn btn-success" style="padding: 4px; font-size: 12px;" onclick="saveNewRow()">Create</button>
+                    <button class="btn" style="padding: 4px; font-size: 12px;" onclick="cancelNewRow()">Cancel</button>
+                </div>
+            </td>`;
+
+            // Data cells — editable inputs for user-writable fields, blank for system fields
+            detectedHeaders.forEach(header => {
+                const td = document.createElement('td');
+                td.setAttribute('data-field', header);
+
+                if (header === '_id' || header === 'Created Date' || header === 'Modified Date' || header === 'Created By') {
+                    td.innerHTML = '<span style="color: #999; font-style: italic; font-size: 12px;">auto</span>';
+                } else {
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = '';
+                    input.placeholder = header.replace(/_/g, ' ');
+                    input.style.width = '100%';
+                    input.style.minWidth = '100px';
+                    input.style.boxSizing = 'border-box';
+                    td.appendChild(input);
+                }
+                newRow.appendChild(td);
+            });
+
+            // Prepend the new row to the top of the table
+            tbody.insertBefore(newRow, tbody.firstChild);
+
+            // Scroll to the top so the user can see the new row
+            document.getElementById('table-container').scrollTop = 0;
+
+            // Focus the first editable input
+            const firstInput = newRow.querySelector('td[data-field] input');
+            if (firstInput) firstInput.focus();
+        }
+
+        function cancelNewRow() {
+            const newRow = document.getElementById('row-new');
+            if (newRow) newRow.remove();
+            isAddingNewRow = false;
+        }
+
+        async function saveNewRow() {
+            const newRow = document.getElementById('row-new');
+            if (!newRow) return;
+
+            const cells = newRow.querySelectorAll('td[data-field]');
+            let payload = {};
+
+            cells.forEach(cell => {
+                const field = cell.getAttribute('data-field');
+                // Skip system-managed fields
+                if (field === '_id' || field === 'Created Date' || field === 'Modified Date' || field === 'Created By') return;
+
+                const input = cell.querySelector('input');
+                if (!input) return;
+
+                let val = input.value;
+                if (val.trim() === '') return; // Don't send empty fields
+
+                // Determine the expected type by looking at cachedRecords
+                let expectedType = 'unknown';
+                for (let record of cachedRecords) {
+                    if (record[field] !== null && record[field] !== undefined) {
+                        expectedType = typeof record[field];
+                        break;
+                    }
+                }
+
+                // Basic data type casting
+                if (expectedType === 'number') {
+                    if (!isNaN(val)) val = Number(val);
+                } else if (expectedType === 'boolean') {
+                    if (val.toLowerCase() === 'true') val = true;
+                    else if (val.toLowerCase() === 'false') val = false;
+                }
+
+                payload[field] = val;
+            });
+
+            const currentType = document.getElementById('data-type-selector').value;
+            const fetchUrl = `${API_BASE_URL}${currentType}`;
+
+            const actionCell = newRow.querySelector('.action-cell');
+            const originalActions = actionCell.innerHTML;
+            actionCell.innerHTML = '<span style="color: #28a745; font-size: 12px; font-weight: 500;">Creating...</span>';
+
+            try {
+                const response = await fetch(fetchUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.body?.message || `HTTP Error: ${response.status}`);
+                }
+
+                // Success — refresh the table to show the new row with its server-assigned ID
+                isAddingNewRow = false;
+                await fetchAndRenderData();
+
+            } catch (error) {
+                console.error('Create row error:', error);
+                alert(`Failed to create row: ${error.message}`);
                 actionCell.innerHTML = originalActions;
             }
         }
@@ -959,18 +1677,17 @@
 
         function toggleColumnEditMode() {
             isEditingColumns = !isEditingColumns;
-            const btn = document.getElementById('edit-columns-btn');
+            const btn = document.getElementById('edit-columns-link');
             const container = document.getElementById('table-container');
 
             if (isEditingColumns) {
                 // Turn ON Edit Mode
                 btn.innerText = "Save Column Order";
-                btn.className = 'btn btn-primary';
+                btn.className = 'edit-link-active';
             } else {
                 // Turn OFF Edit Mode (Save)
                 btn.innerText = "Saving...";
-                btn.className = 'btn';
-                btn.disabled = true; // Prevent clicking while saving
+                btn.className = 'edit-link-saving';
 
                 // Generate the new string-based orderMap
                 const newMap = detectedHeaders;
@@ -978,7 +1695,7 @@
                 // Send to Bubble, then reset button text
                 saveColumnOrderToBubble(newMap).then(() => {
                     btn.innerText = "Edit Column Order";
-                    btn.disabled = false;
+                    btn.className = '';
                 });
             }
 
@@ -1018,7 +1735,7 @@
         // --- SAVE COLUMN ORDER TO BUBBLE ---
         async function saveColumnOrderToBubble(newMap) {
             if (!settingsRecord || !settingsRecord._id) {
-                alert("Settings record not found in Special Data Constants. Cannot save layout.");
+                alert("Settings record not found in backend Data Constants. Cannot save layout.");
                 return;
             }
 
@@ -1026,7 +1743,7 @@
             const currentTypeConfig = DATA_TYPES.find(dt => dt.value === currentType);
             const targetKey = currentTypeConfig.layoutKey;
 
-            // Hardcode the target to the special data constants table and the specific settings record ID
+            // Hardcode the target to the backend data constants table and the specific settings record ID
             const fetchUrl = `${API_BASE_URL}${APP_SETTINGS_TYPE}/${settingsRecord._id}`;
 
             try {
@@ -1046,7 +1763,7 @@
 
                 // Update the local settings cache so it persists without a page refresh
                 settingsRecord[targetKey] = newMap;
-                console.log("Layout saved to Special Data Constants successfully.");
+                console.log("Layout saved to backend Data Constants successfully.");
 
             } catch (error) {
                 console.error("Save layout error:", error);
