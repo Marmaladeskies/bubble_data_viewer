@@ -703,11 +703,10 @@
         const API_TOKEN = '<your_private_API_key>';
         
         // Optional Configuration for storing persisent column order
-        let originalHeadersRaw = []; // Tracks original default index for the orderMap generator
+        let originalHeadersRaw = [];
         const APP_SETTINGS_TYPE = 'specialdataconstants'; // data type that stores custom column data (lowercase, remove spaces)
         const FIELD_NAME_PREFIX = 'column order'; // arbitrary prefix all of the column sorting data field names in your database begin with
-
-        // Types to exclude from the auto-generated dropdown (e.g. Bubble built-ins)
+        // Data types to exclude from the auto-generated dropdown
         const EXCLUDED_TYPES = [];
 
         // Build the full DATA_TYPES array with layout keys from a base list
@@ -817,9 +816,7 @@
             }
         }
 
-        // Look up which option set values apply to a given field based on meta schema
-        // Returns an array of option strings, or null if the field is not an option set type
-        function getOptionSetForField(dataTypeSlug, fieldDisplayName) {
+        function getFieldMeta(dataTypeSlug, fieldDisplayName) {
             const typeMeta = cachedFieldMeta[dataTypeSlug];
             if (!typeMeta || !fieldDisplayName) return null;
 
@@ -831,6 +828,12 @@
                     (f.id && f.id.toLowerCase().trim() === clean)
                 );
             }
+            return fieldMeta || null;
+        }
+
+        // Look up which option set values apply to a given field based on meta schema
+        function getOptionSetForField(dataTypeSlug, fieldDisplayName) {
+            const fieldMeta = getFieldMeta(dataTypeSlug, fieldDisplayName);
             if (!fieldMeta) return null;
 
             const fieldType = fieldMeta.type; // e.g. 'option.dropdown_options' or 'option.times'
@@ -844,6 +847,22 @@
                 }
             }
             return null;
+        }
+
+        // Detect if a column is typed as yes/no (boolean) in Bubble
+        function isBooleanField(dataTypeSlug, fieldDisplayName) {
+            const fieldMeta = getFieldMeta(dataTypeSlug, fieldDisplayName);
+            if (fieldMeta) {
+                return fieldMeta.type === 'boolean';
+            }
+
+            // Fallback: check cachedRecords
+            for (let record of cachedRecords) {
+                if (record[fieldDisplayName] !== null && record[fieldDisplayName] !== undefined) {
+                    return typeof record[fieldDisplayName] === 'boolean';
+                }
+            }
+            return false;
         }
 
         // Resolve option slug to display name using the cached option set return types from meta
@@ -879,7 +898,7 @@
         let fieldsPopulated = false;
         let cachedRecords = []; // Holds raw server results for local filtering
         let detectedHeaders = []; // Holds absolute unique columns
-        let settingsRecord = null; // Holds your backend database constants layout settings
+        let settingsRecord = null; // Holds your centralized backend database constants layout settings
 
         // --- COLUMN REORDERING STATE ---
         let isEditingColumns = false;
@@ -1202,8 +1221,13 @@
                 headers.forEach(header => {
                     let cellValue = record[header];
 
+                    // Convert boolean true/false to yes/no
+                    const currentType = document.getElementById('data-type-selector')?.value || '';
+                    if (typeof cellValue === 'boolean' || (isBooleanField(currentType, header) && (cellValue === 'true' || cellValue === 'false'))) {
+                        cellValue = (cellValue === true || cellValue === 'true') ? 'yes' : 'no';
+                    }
                     // Handle missing values cleanly
-                    if (cellValue === null || cellValue === undefined) {
+                    else if (cellValue === null || cellValue === undefined) {
                         cellValue = '';
                     }
                     // Bubble often returns linked data or geographic addresses as objects/arrays
@@ -1337,13 +1361,38 @@
                 const currentValue = cell.innerText;
                 cell.setAttribute('data-original', currentValue); // Store for cancellation
 
-                // Check if this field uses an option set type
+                // Check if this field uses an option set or yes/no type
                 const currentType = document.getElementById('data-type-selector').value;
                 const optionValues = getOptionSetForField(currentType, field);
+                const isBool = isBooleanField(currentType, field);
 
                 cell.innerHTML = '';
 
-                if (optionValues && optionValues.length > 0) {
+                if (isBool) {
+                    // Render a <select> dropdown for yes/no fields
+                    const select = document.createElement('select');
+                    select.style.width = '100%';
+                    select.style.minWidth = '100px';
+                    select.style.boxSizing = 'border-box';
+                    select.style.padding = '4px';
+
+                    const blankOpt = document.createElement('option');
+                    blankOpt.value = '';
+                    blankOpt.text = '— none —';
+                    select.appendChild(blankOpt);
+
+                    ['yes', 'no'].forEach(val => {
+                        const opt = document.createElement('option');
+                        opt.value = val === 'yes' ? 'true' : 'false';
+                        opt.text = val;
+                        if (currentValue.toLowerCase() === val || (currentValue === 'true' && val === 'yes') || (currentValue === 'false' && val === 'no')) {
+                            opt.selected = true;
+                        }
+                        select.appendChild(opt);
+                    });
+
+                    cell.appendChild(select);
+                } else if (optionValues && optionValues.length > 0) {
                     // Render a <select> dropdown for option set fields
                     const select = document.createElement('select');
                     select.style.width = '100%';
@@ -1434,14 +1483,27 @@
                     const select = cell.querySelector('select');
                     const editEl = input || select; // Whichever edit element exists
 
-                    if (editEl && editEl.value !== originalValue) {
+                    if (editEl) {
                         let val = editEl.value;
 
-                        // Option set fields are always strings — skip type casting
                         const currentType = document.getElementById('data-type-selector').value;
                         const isOptionSet = !!getOptionSetForField(currentType, field);
+                        const isBool = isBooleanField(currentType, field);
 
-                        if (!isOptionSet) {
+                        let origCompared = originalValue;
+                        if (isBool) {
+                            if (originalValue.toLowerCase() === 'yes' || originalValue === 'true') origCompared = 'true';
+                            else if (originalValue.toLowerCase() === 'no' || originalValue === 'false') origCompared = 'false';
+                            else origCompared = '';
+                        }
+
+                        if (val !== origCompared && (val !== originalValue || isBool)) {
+                            // Handle boolean payload conversion
+                            if (isBool) {
+                                if (val === 'true' || val.toLowerCase() === 'yes') val = true;
+                                else if (val === 'false' || val.toLowerCase() === 'no') val = false;
+                                else if (val === '') val = null;
+                            } else if (!isOptionSet) {
                             // Determine the expected type by looking at cachedRecords
                             let expectedType = 'unknown';
                             for (let record of cachedRecords) {
@@ -1484,6 +1546,7 @@
                         hasChanges = true;
                     }
                 }
+                }
             });
 
             // If they clicked save but didn't change anything, just cancel the edit mode
@@ -1522,12 +1585,22 @@
                         const select = cell.querySelector('select');
                         const editEl = input || select;
                         if (editEl) {
-                            const newValue = editEl.value;
-                            cell.innerText = newValue;
+                            const field = cell.getAttribute('data-field');
+                            const currentType = document.getElementById('data-type-selector').value;
+                            const isBool = isBooleanField(currentType, field);
+
+                            let newValue = editEl.value;
+                            let displayValue = newValue;
+                            if (isBool) {
+                                if (newValue === 'true') { newValue = true; displayValue = 'yes'; }
+                                else if (newValue === 'false') { newValue = false; displayValue = 'no'; }
+                                else { newValue = null; displayValue = ''; }
+                            }
+
+                            cell.innerText = displayValue;
                             cell.removeAttribute('data-original');
 
                             // Keep the local Javascript array in sync so client-side searching works
-                            const field = cell.getAttribute('data-field');
                             const recordIndex = cachedRecords.findIndex(r => r._id === recordId);
                             if (recordIndex > -1) {
                                 cachedRecords[recordIndex][field] = newValue;
@@ -1730,10 +1803,31 @@
                 if (header === '_id' || header === 'Created Date' || header === 'Modified Date' || header === 'Created By') {
                     td.innerHTML = '<span style="color: #999; font-style: italic; font-size: 12px;">auto</span>';
                 } else {
-                    // Check if this field uses an option set type
+                    // Check if this field uses an option set or yes/no type
                     const optionValues = getOptionSetForField(currentType, header);
+                    const isBool = isBooleanField(currentType, header);
 
-                    if (optionValues && optionValues.length > 0) {
+                    if (isBool) {
+                        const select = document.createElement('select');
+                        select.style.width = '100%';
+                        select.style.minWidth = '100px';
+                        select.style.boxSizing = 'border-box';
+                        select.style.padding = '4px';
+
+                        const blankOpt = document.createElement('option');
+                        blankOpt.value = '';
+                        blankOpt.text = '— select —';
+                        select.appendChild(blankOpt);
+
+                        ['yes', 'no'].forEach(val => {
+                            const opt = document.createElement('option');
+                            opt.value = val === 'yes' ? 'true' : 'false';
+                            opt.text = val;
+                            select.appendChild(opt);
+                        });
+
+                        td.appendChild(select);
+                    } else if (optionValues && optionValues.length > 0) {
                         // Render a <select> dropdown for option set fields
                         const select = document.createElement('select');
                         select.style.width = '100%';
@@ -1805,11 +1899,15 @@
                 let val = editEl.value;
                 if (val.trim() === '') return; // Don't send empty fields
 
-                // Check if this is an option set field (skip type casting)
+                // Check if this is an option set or yes/no field
                 const currentType = document.getElementById('data-type-selector').value;
                 const isOptionSet = !!getOptionSetForField(currentType, field);
+                const isBool = isBooleanField(currentType, field);
 
-                if (!isOptionSet) {
+                if (isBool) {
+                    if (val === 'true' || val.toLowerCase() === 'yes') val = true;
+                    else if (val === 'false' || val.toLowerCase() === 'no') val = false;
+                } else if (!isOptionSet) {
                     // Determine the expected type by looking at cachedRecords
                     let expectedType = 'unknown';
                     for (let record of cachedRecords) {
@@ -1957,7 +2055,7 @@
         // --- SAVE COLUMN ORDER TO BUBBLE ---
         async function saveColumnOrderToBubble(newMap) {
             if (!settingsRecord || !settingsRecord._id) {
-                alert("Settings record not found in backend Data Constants. Cannot save layout.");
+                alert("Settings record not found in backend data constants. Cannot save layout.");
                 return;
             }
 
@@ -1985,7 +2083,7 @@
 
                 // Update the local settings cache so it persists without a page refresh
                 settingsRecord[targetKey] = newMap;
-                console.log("Layout saved to backend Data Constants successfully.");
+                console.log("Layout saved to backend data constants successfully.");
 
             } catch (error) {
                 console.error("Save layout error:", error);
