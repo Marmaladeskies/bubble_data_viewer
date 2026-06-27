@@ -253,14 +253,17 @@
             color: #0056b3;
         }
 
-        #edit-columns-link.edit-link-active {
-            color: #007bff;
-            font-weight: 600;
+        #column-edit-buttons {
+            display: none;
+            gap: 6px;
+            margin-top: 10px;
         }
 
-        #edit-columns-link.edit-link-saving {
-            color: #999;
-            pointer-events: none;
+        #save-columns-btn,
+        #cancel-columns-btn {
+            padding: 6px 12px;
+            font-weight: 500;
+            max-width: 200px;
         }
 
         .edit-link {
@@ -684,6 +687,12 @@
             </div>
             <a href="#" id="edit-columns-link" onclick="event.preventDefault(); toggleColumnEditMode()">Edit Column
                 Order</a>
+            <div id="column-edit-buttons">
+                <button type="button" id="save-columns-btn" class="btn btn-primary"
+                    onclick="toggleColumnEditMode()">Save Column Order</button>
+                <button type="button" id="cancel-columns-btn" class="btn"
+                    onclick="cancelColumnEditMode()">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -712,7 +721,7 @@
         // Build the full DATA_TYPES array with layout keys from a base list
         function buildDataTypes(baseTypes) {
             return baseTypes.map(dt => {
-                const final_suffix = dt.field_name_suffix || dt.label.toLowerCase();
+                const final_suffix = dt.data_type_name_lowercase || dt.label.toLowerCase();
                 return {
                     value: dt.value,
                     label: dt.label,
@@ -728,6 +737,8 @@
         let cachedOptionSets = {};
         // Maps data type slug -> field display name -> field meta object (id, display, type)
         let cachedFieldMeta = {};
+        // Maps data type slug -> array of all column headers found in /api/1.1/meta
+        let cachedTypeColumns = {};
 
         // Fetch available data types from Bubble's API meta endpoint
         async function fetchDataTypesFromBubble() {
@@ -747,15 +758,22 @@
             // The meta API returns field IDs but GET responses use display captions (use_captions_for_get)
             // So we build a lookup: dataTypeSlug -> displayName -> { id, display, type }
             cachedFieldMeta = {};
+            cachedTypeColumns = {};
             Object.entries(types).forEach(([typeSlug, typeInfo]) => {
                 const fieldMap = {};
+                const cols = [];
                 if (typeInfo.fields) {
                     typeInfo.fields.forEach(field => {
                         if (field.display) fieldMap[field.display] = field;
                         if (field.id) fieldMap[field.id] = field;
+                        const colName = field.display || field.id;
+                        if (colName && !cols.includes(colName)) {
+                            cols.push(colName);
+                        }
                     });
                 }
                 cachedFieldMeta[typeSlug] = fieldMap;
+                cachedTypeColumns[typeSlug] = cols;
             });
 
             // Build option slug -> display name mapping from get-options return_btype
@@ -823,7 +841,7 @@
             let fieldMeta = typeMeta[fieldDisplayName];
             if (!fieldMeta && typeof fieldDisplayName === 'string') {
                 const clean = fieldDisplayName.toLowerCase().trim();
-                fieldMeta = Object.values(typeMeta).find(f => 
+                fieldMeta = Object.values(typeMeta).find(f =>
                     (f.display && f.display.toLowerCase().trim() === clean) ||
                     (f.id && f.id.toLowerCase().trim() === clean)
                 );
@@ -876,7 +894,7 @@
         }
 
         // Rebuild DATA_TYPES and re-populate the selector dropdown
-        function rebuildDataTypes(baseTypes) {
+        function rebuildDataTypes(baseTypes, preferredValue = null) {
             DATA_TYPES = buildDataTypes(baseTypes);
             const selector = document.getElementById('data-type-selector');
             selector.innerHTML = '';
@@ -886,7 +904,9 @@
                 option.text = dt.label;
                 selector.appendChild(option);
             });
-            if (DATA_TYPES.length > 0) {
+            if (preferredValue && DATA_TYPES.some(dt => dt.value === preferredValue)) {
+                selector.value = preferredValue;
+            } else if (DATA_TYPES.length > 0) {
                 selector.value = DATA_TYPES[0].value;
             }
         }
@@ -902,6 +922,7 @@
 
         // --- COLUMN REORDERING STATE ---
         let isEditingColumns = false;
+        let preEditHeadersBackup = [];
 
         // --- SORTING STATE ---
         let sortField = 'Created Date';
@@ -955,8 +976,17 @@
         function handleDataTypeChange() {
             // 0. Reset Column Edit Mode
             isEditingColumns = false;
-            document.getElementById('edit-columns-link').innerText = "Edit Column Order";
-            document.getElementById('edit-columns-link').className = '';
+            const editLink = document.getElementById('edit-columns-link');
+            if (editLink) editLink.style.display = '';
+            const editButtons = document.getElementById('column-edit-buttons');
+            if (editButtons) editButtons.style.display = 'none';
+            const saveBtn = document.getElementById('save-columns-btn');
+            if (saveBtn) {
+                saveBtn.innerText = "Save Column Order";
+                saveBtn.disabled = false;
+            }
+            const cancelBtn = document.getElementById('cancel-columns-btn');
+            if (cancelBtn) cancelBtn.disabled = false;
 
             // 1. Reset Pagination & Sorting
             currentCursor = 0;
@@ -1047,23 +1077,9 @@
                 const remaining = data.response.remaining;
                 const count = data.response.count;
 
-                if (cachedRecords.length === 0) {
-                    container.innerHTML = '<div style="padding: 10px;">No records found matching your database query.</div>';
-                    pageInfo.innerText = 'No records';
-                    nextBtn.disabled = true;
-                    prevBtn.disabled = currentCursor === 0;
-                    if (prevBtn.disabled && nextBtn.disabled) {
-                        prevBtn.style.display = 'none';
-                        nextBtn.style.display = 'none';
-                    } else {
-                        prevBtn.style.display = '';
-                        nextBtn.style.display = '';
-                    }
-                    return;
-                }
-
-                // Determine all structural columns across the batch
-                const allKeysSet = new Set();
+                // Determine all structural columns across the batch from API meta
+                const metaHeaders = cachedTypeColumns[currentType] || [];
+                const allKeysSet = new Set(metaHeaders);
                 cachedRecords.forEach(record => {
                     Object.keys(record).forEach(key => allKeysSet.add(key));
                 });
@@ -1072,12 +1088,12 @@
                 // --- DATABASE-DRIVEN COLUMN REORDERING ---
                 const currentTypeConfig = DATA_TYPES.find(dt => dt.value === currentType);
                 // Grab the correct API field key from our config
-                const targetKey = currentTypeConfig.layoutKey;
+                const targetKey = currentTypeConfig ? currentTypeConfig.layoutKey : '';
 
                 let activeOrderMap = null;
 
                 // Look for the array inside the backend database constant settings record instead of cachedRecords
-                if (settingsRecord && settingsRecord[targetKey]) {
+                if (settingsRecord && targetKey && settingsRecord[targetKey]) {
                     const rawMap = settingsRecord[targetKey];
                     if (Array.isArray(rawMap)) {
                         activeOrderMap = rawMap;
@@ -1112,6 +1128,23 @@
                 // Clear the local text input when turning pages/requerying, then render
                 document.getElementById('table-filter').value = '';
                 toggleClearBtn('table-filter', 'clear-filter-btn');
+
+                if (cachedRecords.length === 0) {
+                    renderTable([], detectedHeaders, container);
+                    container.innerHTML += '<div style="padding: 10px; text-align: center; color: #666;">No records found matching your database query.</div>';
+                    pageInfo.innerText = 'No records';
+                    nextBtn.disabled = true;
+                    prevBtn.disabled = currentCursor === 0;
+                    if (prevBtn.disabled && nextBtn.disabled) {
+                        prevBtn.style.display = 'none';
+                        nextBtn.style.display = 'none';
+                    } else {
+                        prevBtn.style.display = '';
+                        nextBtn.style.display = '';
+                    }
+                    return;
+                }
+
                 renderTable(cachedRecords, detectedHeaders, container);
 
                 const startRecord = currentCursor + 1;
@@ -1267,7 +1300,8 @@
             });
 
             if (filteredRecords.length === 0) {
-                container.innerHTML = `<div style="padding: 10px;">No visible records match "${filterValue}" on this page.</div>`;
+                renderTable([], detectedHeaders, container);
+                container.innerHTML += `<div style="padding: 10px; text-align: center; color: #666;">No visible records match "${filterValue}" on this page.</div>`;
             } else {
                 renderTable(filteredRecords, detectedHeaders, container);
             }
@@ -1356,7 +1390,7 @@
                 const field = cell.getAttribute('data-field');
 
                 // Prevent editing of Bubble's protected system IDs
-                if (field === '_id' || field === 'Created Date' || field === 'Modified Date') return;
+                if (field === '_id' || field === 'Created Date' || field === 'Created By' || field === 'Modified Date') return;
 
                 const currentValue = cell.innerText;
                 cell.setAttribute('data-original', currentValue); // Store for cancellation
@@ -1504,48 +1538,48 @@
                                 else if (val === 'false' || val.toLowerCase() === 'no') val = false;
                                 else if (val === '') val = null;
                             } else if (!isOptionSet) {
-                            // Determine the expected type by looking at cachedRecords
-                            let expectedType = 'unknown';
-                            for (let record of cachedRecords) {
-                                if (record[field] !== null && record[field] !== undefined) {
-                                    expectedType = typeof record[field];
-                                    break;
+                                // Determine the expected type by looking at cachedRecords
+                                let expectedType = 'unknown';
+                                for (let record of cachedRecords) {
+                                    if (record[field] !== null && record[field] !== undefined) {
+                                        expectedType = typeof record[field];
+                                        break;
+                                    }
+                                }
+
+                                // Basic Data Type Casting to prevent 400 errors on Save
+                                if (expectedType === 'number') {
+                                    if (val.trim() !== '' && !isNaN(val)) {
+                                        val = Number(val);
+                                    } else if (val.trim() === '') {
+                                        val = null;
+                                    }
+                                } else if (expectedType === 'boolean') {
+                                    if (val.toLowerCase() === 'true') val = true;
+                                    else if (val.toLowerCase() === 'false') val = false;
+                                } else if (expectedType === 'string') {
+                                    // Leave as string to prevent "Expected a string, but got a number" errors
+                                } else {
+                                    // Fallback to basic guessing if type is unknown (e.g. whole column is null)
+                                    if (val.trim() !== '' && !isNaN(val)) {
+                                        val = Number(val);
+                                    } else if (val.toLowerCase() === 'true') {
+                                        val = true;
+                                    } else if (val.toLowerCase() === 'false') {
+                                        val = false;
+                                    }
                                 }
                             }
 
-                            // Basic Data Type Casting to prevent 400 errors on Save
-                            if (expectedType === 'number') {
-                                if (val.trim() !== '' && !isNaN(val)) {
-                                    val = Number(val);
-                                } else if (val.trim() === '') {
-                                    val = null;
-                                }
-                            } else if (expectedType === 'boolean') {
-                                if (val.toLowerCase() === 'true') val = true;
-                                else if (val.toLowerCase() === 'false') val = false;
-                            } else if (expectedType === 'string') {
-                                // Leave as string to prevent "Expected a string, but got a number" errors
-                            } else {
-                                // Fallback to basic guessing if type is unknown (e.g. whole column is null)
-                                if (val.trim() !== '' && !isNaN(val)) {
-                                    val = Number(val);
-                                } else if (val.toLowerCase() === 'true') {
-                                    val = true;
-                                } else if (val.toLowerCase() === 'false') {
-                                    val = false;
-                                }
+                            // For option set fields, send empty string as null to clear the value
+                            if (isOptionSet && val === '') {
+                                val = null;
                             }
-                        }
 
-                        // For option set fields, send empty string as null to clear the value
-                        if (isOptionSet && val === '') {
-                            val = null;
+                            payload[field] = val;
+                            hasChanges = true;
                         }
-
-                        payload[field] = val;
-                        hasChanges = true;
                     }
-                }
                 }
             });
 
@@ -1968,6 +2002,8 @@
         // --- ENVIRONMENT SWITCHING ---
         async function handleVersionChange() {
             const selector = document.getElementById('version-selector');
+            const typeSelector = document.getElementById('data-type-selector');
+            const currentType = typeSelector ? typeSelector.value : null;
 
             // 1. Update the configuration variables based on the dropdown
             VERSION = selector.value;
@@ -1982,7 +2018,7 @@
 
             // 3. Re-fetch data types for the new version (types may differ between test/live)
             const fetchedTypes = await fetchDataTypesFromBubble();
-            rebuildDataTypes(fetchedTypes);
+            rebuildDataTypes(fetchedTypes, currentType);
             console.log(`Re-loaded ${fetchedTypes.length} data types for ${VERSION || 'live'} version.`);
 
             // 4. Re-fetch option sets for the new version
@@ -1997,29 +2033,59 @@
 
         function toggleColumnEditMode() {
             isEditingColumns = !isEditingColumns;
-            const btn = document.getElementById('edit-columns-link');
+            const editLink = document.getElementById('edit-columns-link');
+            const editButtons = document.getElementById('column-edit-buttons');
+            const saveBtn = document.getElementById('save-columns-btn');
+            const cancelBtn = document.getElementById('cancel-columns-btn');
             const container = document.getElementById('table-container');
 
             if (isEditingColumns) {
                 // Turn ON Edit Mode
-                btn.innerText = "Save Column Order";
-                btn.className = 'edit-link-active';
+                preEditHeadersBackup = [...detectedHeaders];
+                if (editLink) editLink.style.display = 'none';
+                if (editButtons) editButtons.style.display = 'flex';
+                if (saveBtn) {
+                    saveBtn.innerText = "Save Column Order";
+                    saveBtn.disabled = false;
+                }
+                if (cancelBtn) cancelBtn.disabled = false;
             } else {
                 // Turn OFF Edit Mode (Save)
-                btn.innerText = "Saving...";
-                btn.className = 'edit-link-saving';
+                if (saveBtn) {
+                    saveBtn.innerText = "Saving...";
+                    saveBtn.disabled = true;
+                }
+                if (cancelBtn) cancelBtn.disabled = true;
 
                 // Generate the new string-based orderMap
                 const newMap = detectedHeaders;
 
-                // Send to Bubble, then reset button text
+                // Send to Bubble, then reset button/link visibility
                 saveColumnOrderToBubble(newMap).then(() => {
-                    btn.innerText = "Edit Column Order";
-                    btn.className = '';
+                    if (editButtons) editButtons.style.display = 'none';
+                    if (saveBtn) {
+                        saveBtn.innerText = "Save Column Order";
+                        saveBtn.disabled = false;
+                    }
+                    if (cancelBtn) cancelBtn.disabled = false;
+                    if (editLink) editLink.style.display = '';
                 });
             }
 
             // Re-render table to apply or remove draggable states
+            renderTable(cachedRecords, detectedHeaders, container);
+        }
+
+        function cancelColumnEditMode() {
+            isEditingColumns = false;
+            detectedHeaders = [...preEditHeadersBackup];
+            const editLink = document.getElementById('edit-columns-link');
+            const editButtons = document.getElementById('column-edit-buttons');
+            const container = document.getElementById('table-container');
+
+            if (editButtons) editButtons.style.display = 'none';
+            if (editLink) editLink.style.display = '';
+
             renderTable(cachedRecords, detectedHeaders, container);
         }
 
