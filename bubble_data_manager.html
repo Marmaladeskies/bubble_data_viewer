@@ -341,6 +341,11 @@
             border: 1px solid #ffc107;
         }
 
+        .selection-bar .btn {
+            max-width: none;
+            width: 140px;
+        }
+
         .btn-primary {
             background: #007bff;
             color: white;
@@ -1387,7 +1392,7 @@
                 const row = document.getElementById(`row-${recordId}`);
                 if (row) {
                     const actionCell = row.querySelector('.action-cell');
-                    if (actionCell && !actionCell.querySelector('.btn-primary')) {
+                    if (actionCell && actionCell.innerHTML.trim() === '') {
                         editRow(recordId);
                     }
                 }
