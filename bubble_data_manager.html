@@ -322,7 +322,6 @@
             background: #218838;
         }
 
-        /* Delete bar shown when rows are selected */
         .selection-bar {
             display: flex;
             align-items: center;
@@ -717,13 +716,12 @@
         const DOMAIN_NAME = 'yourdomain.com'
         let API_BASE_URL = `https://${DOMAIN_NAME}${VERSION}/api/1.1/obj/`;
         const API_TOKEN = '<your_private_API_key>';
+        const EXCLUDED_TYPES = []; // list any data types you want this script to always ignore entirely
         
         // Optional Configuration for storing persisent column order
         let originalHeadersRaw = [];
         const APP_SETTINGS_TYPE = 'specialdataconstants'; // data type that stores custom column data (lowercase, remove spaces)
         const FIELD_NAME_PREFIX = 'column order'; // arbitrary prefix all of the column sorting data field names in your database begin with
-        // Data types to exclude from the auto-generated dropdown
-        const EXCLUDED_TYPES = [];
 
         // Build the full DATA_TYPES array with layout keys from a base list
         function buildDataTypes(baseTypes) {
@@ -1210,9 +1208,6 @@
                             <input type="checkbox" title="Select all rows" ${allChecked ? 'checked' : ''}
                                    onchange="toggleSelectAll(this.checked)">
                           </th>`;
-
-            // Add Edit Column Header
-            tableHTML += '<th></th>';
 
             // Generate Data Headers (Conditionally Draggable)
             headers.forEach((header, index) => {
