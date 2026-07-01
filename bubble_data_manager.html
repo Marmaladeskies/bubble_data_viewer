@@ -322,10 +322,14 @@
             background: #218838;
         }
 
+        #selection-buttons {
+            justify-content: space-between;
+        }
+
         .selection-bar {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 22px;
             padding: 10px 15px;
             background: #f4f6f8;
             border: 1px solid #ddd;
@@ -333,6 +337,7 @@
             margin-top: 10px;
             font-size: 14px;
             font-weight: 500;
+            justify-content: space-between;
         }
 
         .selection-bar.active {
@@ -461,7 +466,6 @@
 
         .action-buttons {
             display: flex;
-            align-items: center;
             gap: 10px;
         }
 
@@ -473,6 +477,14 @@
         @keyframes spin {
             100% {
                 transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 925px) {
+            #selection-bar {
+                flex-direction: column;
+                justify-self: left;
+                justify-content: left !important;t;
             }
         }
 
@@ -552,7 +564,6 @@
 
             .selection-bar {
                 flex-wrap: wrap;
-                gap: 10px;
             }
 
             #selection-count {
@@ -572,9 +583,6 @@
             }
 
             .action-buttons {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
                 width: 100%;
             }
 
@@ -652,14 +660,6 @@
             <span class="badge">Bubble's search is limited to exact matches only.</span>
         </div>
     </div>
-
-    <div id="selection-bar" class="selection-bar">
-        <span id="selection-count">0 rows selected</span>
-        <button id="edit-selected-btn" class="btn btn-primary" onclick="editSelectedRows()" disabled>Edit Selected</button>
-        <button id="delete-selected-btn" class="btn btn-danger" onclick="deleteSelectedRows()" disabled>Delete Selected</button>
-        <button id="clear-selection-btn" class="btn" onclick="clearSelection()" disabled>Clear Selection</button>
-    </div>
-
     <div class="table-filter-container" style="justify-content: space-between;">
         <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
             <div class="input-wrapper" style="width: 400px; max-width: 400px;">
@@ -674,7 +674,27 @@
         </div>
 
         <div id="column-order-refresh-group">
-            <div class="action-buttons">
+            <a href="#" id="edit-columns-link" onclick="event.preventDefault(); toggleColumnEditMode()">Edit Column
+                Order</a>
+            <div id="column-edit-buttons">
+                <button type="button" id="save-columns-btn" class="btn btn-primary"
+                    onclick="toggleColumnEditMode()">Save Column Order</button>
+                <button type="button" id="cancel-columns-btn" class="btn"
+                    onclick="cancelColumnEditMode()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="selection-bar" class="selection-bar">
+        <div id="selection-buttons" class="selection-bar">
+            <span id="selection-count">0 rows selected</span>
+            <button id="edit-selected-btn" class="btn btn-primary" onclick="editSelectedRows()" disabled>Edit
+                Selected</button>
+            <button id="delete-selected-btn" class="btn btn-danger" onclick="deleteSelectedRows()" disabled>Delete
+                Selected</button>
+            <button id="clear-selection-btn" class="btn" onclick="clearSelection()" disabled>Clear Selection</button>
+        </div>
+        <div id="action-buttons" class="action-buttons">
                 <button id="add-row-btn" class="icon-btn btn-success" onclick="addNewRow()" title="Add New Row">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -690,15 +710,6 @@
                         <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                     </svg>
                 </button>
-            </div>
-            <a href="#" id="edit-columns-link" onclick="event.preventDefault(); toggleColumnEditMode()">Edit Column
-                Order</a>
-            <div id="column-edit-buttons">
-                <button type="button" id="save-columns-btn" class="btn btn-primary"
-                    onclick="toggleColumnEditMode()">Save Column Order</button>
-                <button type="button" id="cancel-columns-btn" class="btn"
-                    onclick="cancelColumnEditMode()">Cancel</button>
-            </div>
         </div>
     </div>
 
