@@ -322,22 +322,32 @@
             background: #218838;
         }
 
-        /* Delete bar shown when rows are selected */
+        #selection-buttons {
+            justify-content: space-between;
+        }
+
         .selection-bar {
-            display: none;
+            display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 22px;
             padding: 10px 15px;
-            background: #fff3cd;
-            border: 1px solid #ffc107;
+            background: #f4f6f8;
+            border: 1px solid #ddd;
             border-radius: 6px;
             margin-top: 10px;
             font-size: 14px;
             font-weight: 500;
+            justify-content: space-between;
         }
 
-        .selection-bar.visible {
-            display: flex;
+        .selection-bar.active {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+        }
+
+        .selection-bar .btn {
+            max-width: none;
+            width: 140px;
         }
 
         .btn-primary {
@@ -456,7 +466,6 @@
 
         .action-buttons {
             display: flex;
-            align-items: center;
             gap: 10px;
         }
 
@@ -468,6 +477,14 @@
         @keyframes spin {
             100% {
                 transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 925px) {
+            #selection-bar {
+                flex-direction: column;
+                justify-self: left;
+                justify-content: left !important;t;
             }
         }
 
@@ -547,7 +564,6 @@
 
             .selection-bar {
                 flex-wrap: wrap;
-                gap: 10px;
             }
 
             #selection-count {
@@ -567,9 +583,6 @@
             }
 
             .action-buttons {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
                 width: 100%;
             }
 
@@ -647,13 +660,6 @@
             <span class="badge">Bubble's search is limited to exact matches only.</span>
         </div>
     </div>
-
-    <div id="selection-bar" class="selection-bar">
-        <span id="selection-count">0 rows selected</span>
-        <button class="btn btn-danger" onclick="deleteSelectedRows()">Delete Selected</button>
-        <button class="btn" onclick="clearSelection()">Clear Selection</button>
-    </div>
-
     <div class="table-filter-container" style="justify-content: space-between;">
         <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
             <div class="input-wrapper" style="width: 400px; max-width: 400px;">
@@ -668,7 +674,27 @@
         </div>
 
         <div id="column-order-refresh-group">
-            <div class="action-buttons">
+            <a href="#" id="edit-columns-link" onclick="event.preventDefault(); toggleColumnEditMode()">Edit Column
+                Order</a>
+            <div id="column-edit-buttons">
+                <button type="button" id="save-columns-btn" class="btn btn-primary"
+                    onclick="toggleColumnEditMode()">Save Column Order</button>
+                <button type="button" id="cancel-columns-btn" class="btn"
+                    onclick="cancelColumnEditMode()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="selection-bar" class="selection-bar">
+        <div id="selection-buttons" class="selection-bar">
+            <span id="selection-count">0 rows selected</span>
+            <button id="edit-selected-btn" class="btn btn-primary" onclick="editSelectedRows()" disabled>Edit
+                Selected</button>
+            <button id="delete-selected-btn" class="btn btn-danger" onclick="deleteSelectedRows()" disabled>Delete
+                Selected</button>
+            <button id="clear-selection-btn" class="btn" onclick="clearSelection()" disabled>Clear Selection</button>
+        </div>
+        <div id="action-buttons" class="action-buttons">
                 <button id="add-row-btn" class="icon-btn btn-success" onclick="addNewRow()" title="Add New Row">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -684,15 +710,6 @@
                         <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                     </svg>
                 </button>
-            </div>
-            <a href="#" id="edit-columns-link" onclick="event.preventDefault(); toggleColumnEditMode()">Edit Column
-                Order</a>
-            <div id="column-edit-buttons">
-                <button type="button" id="save-columns-btn" class="btn btn-primary"
-                    onclick="toggleColumnEditMode()">Save Column Order</button>
-                <button type="button" id="cancel-columns-btn" class="btn"
-                    onclick="cancelColumnEditMode()">Cancel</button>
-            </div>
         </div>
     </div>
 
@@ -710,13 +727,12 @@
         const DOMAIN_NAME = 'yourdomain.com'
         let API_BASE_URL = `https://${DOMAIN_NAME}${VERSION}/api/1.1/obj/`;
         const API_TOKEN = '<your_private_API_key>';
+        const EXCLUDED_TYPES = []; // list any data types you want this script to always ignore entirely
         
         // Optional Configuration for storing persisent column order
         let originalHeadersRaw = [];
         const APP_SETTINGS_TYPE = 'specialdataconstants'; // data type that stores custom column data (lowercase, remove spaces)
         const FIELD_NAME_PREFIX = 'column order'; // arbitrary prefix all of the column sorting data field names in your database begin with
-        // Data types to exclude from the auto-generated dropdown
-        const EXCLUDED_TYPES = [];
 
         // Build the full DATA_TYPES array with layout keys from a base list
         function buildDataTypes(baseTypes) {
@@ -1204,9 +1220,6 @@
                                    onchange="toggleSelectAll(this.checked)">
                           </th>`;
 
-            // Add Edit Column Header
-            tableHTML += '<th></th>';
-
             // Generate Data Headers (Conditionally Draggable)
             headers.forEach((header, index) => {
                 const cleanHeader = header.replace(/_/g, ' ').trim();
@@ -1247,9 +1260,7 @@
                               </td>`;
 
                 // Add the explicit Edit Button cell
-                tableHTML += `<td class="action-cell">
-                                <a href="#" class="edit-link" onclick="event.preventDefault(); editRow('${record._id}')">Edit</a>
-                              </td>`;
+                tableHTML += `<td class="action-cell"></td>`;
 
                 headers.forEach(header => {
                     let cellValue = record[header];
@@ -1382,6 +1393,18 @@
         }
 
         // --- CLIENT SIDE ROW EDITING ---
+        function editSelectedRows() {
+            selectedRowIds.forEach(recordId => {
+                const row = document.getElementById(`row-${recordId}`);
+                if (row) {
+                    const actionCell = row.querySelector('.action-cell');
+                    if (actionCell && actionCell.innerHTML.trim() === '') {
+                        editRow(recordId);
+                    }
+                }
+            });
+        }
+
         function editRow(recordId) {
             const row = document.getElementById(`row-${recordId}`);
             const cells = row.querySelectorAll('td[data-field]'); // Grab all data cells
@@ -1492,9 +1515,9 @@
                 }
             });
 
-            // Restore the primary Edit button
+            // Clear the primary Edit button
             const actionCell = row.querySelector('.action-cell');
-            actionCell.innerHTML = `<a href="#" class="edit-link" onclick="event.preventDefault(); editRow('${recordId}')">Edit</a>`;
+            actionCell.innerHTML = ``;
         }
 
         async function saveRow(recordId) {
@@ -1643,8 +1666,8 @@
                     }
                 });
 
-                // Restore Edit Button
-                actionCell.innerHTML = `<a href="#" class="edit-link" onclick="event.preventDefault(); editRow('${recordId}')">Edit</a>`;
+                // Clear Edit Button
+                actionCell.innerHTML = ``;
 
             } catch (error) {
                 console.error("Save error:", error);
@@ -1713,12 +1736,23 @@
         function updateSelectionBar() {
             const bar = document.getElementById('selection-bar');
             const countSpan = document.getElementById('selection-count');
+            const editBtn = document.getElementById('edit-selected-btn');
+            const deleteBtn = document.getElementById('delete-selected-btn');
+            const clearBtn = document.getElementById('clear-selection-btn');
+
             const count = selectedRowIds.size;
             if (count > 0) {
-                bar.classList.add('visible');
+                bar.classList.add('active');
                 countSpan.textContent = `${count} row${count !== 1 ? 's' : ''} selected`;
+                if (editBtn) editBtn.disabled = false;
+                if (deleteBtn) deleteBtn.disabled = false;
+                if (clearBtn) clearBtn.disabled = false;
             } else {
-                bar.classList.remove('visible');
+                bar.classList.remove('active');
+                countSpan.textContent = '0 rows selected';
+                if (editBtn) editBtn.disabled = true;
+                if (deleteBtn) deleteBtn.disabled = true;
+                if (clearBtn) clearBtn.disabled = true;
             }
         }
 
