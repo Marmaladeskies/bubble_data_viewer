@@ -324,20 +324,21 @@
 
         /* Delete bar shown when rows are selected */
         .selection-bar {
-            display: none;
+            display: flex;
             align-items: center;
             gap: 12px;
             padding: 10px 15px;
-            background: #fff3cd;
-            border: 1px solid #ffc107;
+            background: #f4f6f8;
+            border: 1px solid #ddd;
             border-radius: 6px;
             margin-top: 10px;
             font-size: 14px;
             font-weight: 500;
         }
 
-        .selection-bar.visible {
-            display: flex;
+        .selection-bar.active {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
         }
 
         .btn-primary {
@@ -650,8 +651,9 @@
 
     <div id="selection-bar" class="selection-bar">
         <span id="selection-count">0 rows selected</span>
-        <button class="btn btn-danger" onclick="deleteSelectedRows()">Delete Selected</button>
-        <button class="btn" onclick="clearSelection()">Clear Selection</button>
+        <button id="edit-selected-btn" class="btn btn-primary" onclick="editSelectedRows()" disabled>Edit Selected</button>
+        <button id="delete-selected-btn" class="btn btn-danger" onclick="deleteSelectedRows()" disabled>Delete Selected</button>
+        <button id="clear-selection-btn" class="btn" onclick="clearSelection()" disabled>Clear Selection</button>
     </div>
 
     <div class="table-filter-container" style="justify-content: space-between;">
@@ -1247,9 +1249,7 @@
                               </td>`;
 
                 // Add the explicit Edit Button cell
-                tableHTML += `<td class="action-cell">
-                                <a href="#" class="edit-link" onclick="event.preventDefault(); editRow('${record._id}')">Edit</a>
-                              </td>`;
+                tableHTML += `<td class="action-cell"></td>`;
 
                 headers.forEach(header => {
                     let cellValue = record[header];
@@ -1382,6 +1382,18 @@
         }
 
         // --- CLIENT SIDE ROW EDITING ---
+        function editSelectedRows() {
+            selectedRowIds.forEach(recordId => {
+                const row = document.getElementById(`row-${recordId}`);
+                if (row) {
+                    const actionCell = row.querySelector('.action-cell');
+                    if (actionCell && !actionCell.querySelector('.btn-primary')) {
+                        editRow(recordId);
+                    }
+                }
+            });
+        }
+
         function editRow(recordId) {
             const row = document.getElementById(`row-${recordId}`);
             const cells = row.querySelectorAll('td[data-field]'); // Grab all data cells
@@ -1492,9 +1504,9 @@
                 }
             });
 
-            // Restore the primary Edit button
+            // Clear the primary Edit button
             const actionCell = row.querySelector('.action-cell');
-            actionCell.innerHTML = `<a href="#" class="edit-link" onclick="event.preventDefault(); editRow('${recordId}')">Edit</a>`;
+            actionCell.innerHTML = ``;
         }
 
         async function saveRow(recordId) {
@@ -1643,8 +1655,8 @@
                     }
                 });
 
-                // Restore Edit Button
-                actionCell.innerHTML = `<a href="#" class="edit-link" onclick="event.preventDefault(); editRow('${recordId}')">Edit</a>`;
+                // Clear Edit Button
+                actionCell.innerHTML = ``;
 
             } catch (error) {
                 console.error("Save error:", error);
@@ -1713,12 +1725,23 @@
         function updateSelectionBar() {
             const bar = document.getElementById('selection-bar');
             const countSpan = document.getElementById('selection-count');
+            const editBtn = document.getElementById('edit-selected-btn');
+            const deleteBtn = document.getElementById('delete-selected-btn');
+            const clearBtn = document.getElementById('clear-selection-btn');
+
             const count = selectedRowIds.size;
             if (count > 0) {
-                bar.classList.add('visible');
+                bar.classList.add('active');
                 countSpan.textContent = `${count} row${count !== 1 ? 's' : ''} selected`;
+                if (editBtn) editBtn.disabled = false;
+                if (deleteBtn) deleteBtn.disabled = false;
+                if (clearBtn) clearBtn.disabled = false;
             } else {
-                bar.classList.remove('visible');
+                bar.classList.remove('active');
+                countSpan.textContent = '0 rows selected';
+                if (editBtn) editBtn.disabled = true;
+                if (deleteBtn) deleteBtn.disabled = true;
+                if (clearBtn) clearBtn.disabled = true;
             }
         }
 
