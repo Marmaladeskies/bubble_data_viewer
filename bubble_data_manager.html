@@ -2029,10 +2029,9 @@
         let successCount = 0;
         let failCount = 0;
 
-        for (let i = 0; i < idsToDelete.length; i++) {
-          const id = idsToDelete[i];
-          countSpan.textContent = `Deleting ${i + 1} of ${count}...`;
+        countSpan.textContent = `Deleting ${count} row${count !== 1 ? "s" : ""}...`;
 
+        const deletePromises = idsToDelete.map(async (id) => {
           try {
             const fetchUrl = `${API_BASE_URL}${currentType}/${id}`;
             const response = await fetch(fetchUrl, {
@@ -2044,6 +2043,19 @@
               throw new Error(`HTTP ${response.status}`);
             }
 
+            return { id, success: true };
+          } catch (error) {
+            console.error(`Failed to delete ${id}:`, error);
+            return { id, success: false };
+          }
+        });
+
+        const results = await Promise.all(deletePromises);
+
+        for (const { id, success } of results) {
+          if (success) {
+            successCount++;
+
             // Remove from local cache
             cachedRecords = cachedRecords.filter((r) => r._id !== id);
             selectedRowIds.delete(id);
@@ -2051,10 +2063,7 @@
             // Remove the row from the DOM immediately
             const row = document.getElementById(`row-${id}`);
             if (row) row.remove();
-
-            successCount++;
-          } catch (error) {
-            console.error(`Failed to delete ${id}:`, error);
+          } else {
             failCount++;
           }
         }
